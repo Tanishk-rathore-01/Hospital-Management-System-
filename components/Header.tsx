@@ -1,4 +1,4 @@
-import { Search, Bell, ChevronDown } from 'lucide-react';
+import { Search, Bell, ChevronDown, Building2 } from 'lucide-react';
 import { NavItem } from '../types';
 
 interface HeaderProps {
@@ -6,60 +6,61 @@ interface HeaderProps {
 }
 
 const pageTitles: Record<NavItem, { title: string; subtitle: string }> = {
-  landing: { title: 'Welcome', subtitle: 'Apex Health Care dashboard and overview' },
-  dashboard: { title: 'Dashboard', subtitle: 'Welcome back, Admin! Here\'s what\'s happening today.' },
-  patients: { title: 'Patient Management', subtitle: 'Register and manage patient records' },
-  appointments: { title: 'Appointments', subtitle: 'Schedule and track doctor appointments' },
-  'medical-records': { title: 'Medical Records', subtitle: 'View and manage patient medical history' },
-  billing: { title: 'Billing & Payments', subtitle: 'Manage invoices and financial transactions' },
-  pharmacy: { title: 'Pharmacy Management', subtitle: 'Track medicine inventory and orders' },
-  reports: { title: 'Reports & Analytics', subtitle: 'Insights and performance metrics' },
+  landing: { title: 'Apex Health Care', subtitle: 'One calm workspace for Indian hospital teams' },
+  dashboard: { title: 'Dashboard', subtitle: 'Today\'s care flow, operations, billing, and stock health.' },
+  patients: { title: 'Patient Management', subtitle: 'Register, search, and maintain patient records' },
+  appointments: { title: 'Appointments', subtitle: 'Schedule and track doctor consultations' },
+  'medical-records': { title: 'Medical Records', subtitle: 'Review clinical history, labs, prescriptions, and vitals' },
+  billing: { title: 'Billing & Payments', subtitle: 'Manage INR invoices, insurance, GST, and collections' },
+  pharmacy: { title: 'Pharmacy Management', subtitle: 'Track medicine inventory, batches, and orders' },
+  reports: { title: 'Reports & Analytics', subtitle: 'Operational insights for care and finance teams' },
 };
 
 export default function Header({ activeNav }: HeaderProps) {
   const { title, subtitle } = pageTitles[activeNav];
   const now = new Date();
-const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <header className="h-16 bg-white/80 backdrop-blur border-b border-slate-200/60 flex items-center justify-between px-6 sticky top-0 z-40">
-      <div>
-        <h2 className="text-lg font-bold text-slate-800">{title}</h2>
-        <p className="text-xs text-slate-500">{subtitle}</p>
+    <header className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-4 border-b border-slate-700/60 bg-[#071214]/86 px-4 py-3 backdrop-blur-xl sm:px-6">
+      <div className="min-w-0">
+        <h2 className="truncate text-base font-bold text-slate-100 sm:text-lg">{title}</h2>
+        <p className="hidden text-xs text-slate-400 sm:block">{subtitle}</p>
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Search */}
+      <div className="flex items-center gap-2 sm:gap-4">
         <div role="search" aria-label="Site search" className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden />
           <input
             type="text"
             name="q"
             aria-label="Search patients and doctors"
-            placeholder="Search patients, doctors..."
+            placeholder="Search patients, appointments, invoices..."
             autoComplete="off"
-            className="w-64 pl-9 pr-4 py-2 text-sm bg-slate-100 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all"
+            className="w-72 rounded-lg border border-slate-700/70 bg-slate-900/60 py-2 pl-9 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
           />
         </div>
 
-        {/* Date */}
-        <span className="hidden lg:block text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
+        <span className="hidden rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 py-1.5 text-xs text-slate-400 xl:block">
           {dateStr}
         </span>
 
-        {/* Notifications */}
-        <button aria-label="View notifications" className="relative w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
-          <Bell className="w-4 h-4 text-slate-600" aria-hidden />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white" aria-hidden />
+        <button aria-label="Current branch hospital" className="hidden items-center gap-2 rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-left text-xs text-slate-300 lg:flex">
+          <Building2 className="h-4 w-4 text-teal-300" />
+          <span className="max-w-40 truncate">Bengaluru, Karnataka</span>
+        </button>
+
+        <button aria-label="View notifications" className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/70 bg-slate-900/60 transition-colors hover:bg-slate-800">
+          <Bell className="w-4 h-4 text-slate-300" aria-hidden />
+          <span className="absolute right-1 top-1 h-2 w-2 rounded-full border border-[#071214] bg-teal-400" aria-hidden />
           <span className="sr-only">3 new notifications</span>
         </button>
 
-        {/* User */}
-        <button aria-haspopup="true" aria-expanded="false" aria-controls="user-menu" className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-slate-100 transition-colors">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white">
-            AD
+        <button aria-haspopup="true" aria-expanded="false" aria-controls="user-menu" className="flex items-center gap-2 rounded-lg border border-slate-700/70 bg-slate-900/60 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-slate-800">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-teal-500/20 text-xs font-bold text-teal-200">
+            RS
           </div>
-          <span className="text-sm font-semibold text-slate-700 hidden md:block">Admin</span>
+          <span className="hidden text-sm font-semibold text-slate-200 md:block">Admin</span>
           <ChevronDown className="w-3 h-3 text-slate-400" />
         </button>
       </div>

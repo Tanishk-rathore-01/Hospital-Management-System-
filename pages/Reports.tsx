@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Users, Calendar, DollarSign, Pill, Activity, Download } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Calendar, IndianRupee, Pill, Activity, Download } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar, Legend
@@ -51,7 +51,7 @@ export default function Reports() {
   const avgAppointmentFee = Math.round(appointments.reduce((s, a) => s + a.fee, 0) / appointments.length);
 
   const kpiData = [
-    { label: 'Total Revenue (YTD)', value: formatINR(totalRevenue), change: '+14.2%', positive: true, icon: DollarSign, color: 'from-emerald-500 to-teal-600' },
+    { label: 'Total Revenue (YTD)', value: formatINR(totalRevenue), change: '+14.2%', positive: true, icon: IndianRupee, color: 'from-emerald-500 to-teal-600' },
     { label: 'Net Profit', value: formatINR(netProfit), change: `${profitMargin}% margin`, positive: true, icon: TrendingUp, color: 'from-blue-500 to-indigo-600' },
     { label: 'Total Patients', value: patients.length, change: '+12.5%', positive: true, icon: Users, color: 'from-violet-500 to-purple-600' },
     { label: 'Bill Collection Rate', value: `${collectionRate}%`, change: '-2.1%', positive: false, icon: Activity, color: 'from-amber-500 to-orange-600' },
@@ -91,7 +91,7 @@ export default function Reports() {
           <div className="flex justify-between items-start mb-5">
             <div>
               <h3 className="font-bold text-slate-800">Financial Performance</h3>
-              <p className="text-xs text-slate-500">Revenue vs Expenses (Jan–Jul 2025)</p>
+              <p className="text-xs text-slate-500">Revenue vs Expenses (Jan-Jul 2026)</p>
             </div>
             <div className="flex items-center gap-4 text-xs">
               <span className="flex items-center gap-1.5"><span className="w-3 h-1 rounded bg-blue-500 inline-block" /> Revenue</span>

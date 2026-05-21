@@ -52,19 +52,18 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-[#071214] text-slate-100" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Sidebar
-        activeNav={activeNav}
-        setActiveNav={setNav}
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
       />
       <div
-        className="flex-1 flex flex-col min-h-screen overflow-hidden transition-all duration-300"
-        style={{ marginLeft: sidebarCollapsed ? '80px' : '256px' }}
+        className={`flex min-h-screen min-w-0 flex-col overflow-hidden transition-all duration-300 ${
+          sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
+        }`}
       >
         <Header activeNav={activeNav} />
-        <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto">
+        <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto pb-24 lg:pb-0">
           <Routes>
             <Route path="/" element={<Landing onGetStarted={() => setNav('dashboard')} />} />
             <Route path="/landing" element={<Landing onGetStarted={() => setNav('dashboard')} />} />

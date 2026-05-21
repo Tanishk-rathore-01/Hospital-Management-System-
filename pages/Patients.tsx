@@ -257,13 +257,13 @@ export default function Patients() {
             </div>
             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
-                { label: 'Full Name *', field: 'name', type: 'text', placeholder: 'John Doe' },
+                { label: 'Full Name *', field: 'name', type: 'text', placeholder: 'Ananya Gupta' },
                 { label: 'Age', field: 'age', type: 'number', placeholder: '30' },
-                { label: 'Phone', field: 'phone', type: 'tel', placeholder: '+1-555-0000' },
+                { label: 'Phone', field: 'phone', type: 'tel', placeholder: '+91-98765-00000' },
                 { label: 'Email', field: 'email', type: 'email', placeholder: 'patient@email.com' },
                 { label: 'Date of Birth', field: 'dateOfBirth', type: 'date', placeholder: '' },
-                { label: 'Emergency Contact', field: 'emergencyContact', type: 'tel', placeholder: '+1-555-0000' },
-                { label: 'Insurance Provider', field: 'insurance', type: 'text', placeholder: 'BlueCross' },
+                { label: 'Emergency Contact', field: 'emergencyContact', type: 'tel', placeholder: '+91-98765-00001' },
+                { label: 'Insurance Provider', field: 'insurance', type: 'text', placeholder: 'Star Health' },
               ].map(({ label, field, type, placeholder }) => (
                 <div key={field}>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">{label}</label>
@@ -299,7 +299,7 @@ export default function Patients() {
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Address</label>
-                <input type="text" placeholder="123 Main St, City, State ZIP" value={formData.address}
+                <input type="text" placeholder="12 M.G. Road, Bengaluru, Karnataka 560001" value={formData.address}
                   onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
                   className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
               </div>

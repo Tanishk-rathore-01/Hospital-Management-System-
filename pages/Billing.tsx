@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Eye, Plus, Download, X, DollarSign, CreditCard, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Search, Eye, Plus, Download, X, IndianRupee, CreditCard, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { formatINR2, formatINR } from '../utils/money';
 
 import { bills as initialBills } from '../data/mockData';
@@ -44,7 +44,7 @@ export default function Billing() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Billed', value: formatINR(totalBilled), icon: DollarSign, color: 'from-slate-500 to-slate-600', sub: `${bills.length} invoices` },
+          { label: 'Total Billed', value: formatINR(totalBilled), icon: IndianRupee, color: 'from-slate-500 to-slate-600', sub: `${bills.length} invoices` },
           { label: 'Total Collected', value: formatINR(totalRevenue), icon: CheckCircle, color: 'from-emerald-500 to-emerald-600', sub: `${bills.filter(b => b.status === 'Paid').length} paid` },
           { label: 'Pending Amount', value: formatINR(totalPending), icon: Clock, color: 'from-amber-500 to-amber-600', sub: `${bills.filter(b => b.status === 'Pending').length} pending` },
           { label: 'Overdue', value: `${bills.filter(b => b.status === 'Overdue').length}`, icon: AlertCircle, color: 'from-rose-500 to-rose-600', sub: 'Overdue invoices' },
@@ -159,7 +159,7 @@ export default function Billing() {
           </table>
           {filtered.length === 0 && (
             <div className="text-center py-12 text-slate-400">
-              <DollarSign className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <IndianRupee className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p className="font-medium">No bills found</p>
             </div>
           )}
@@ -176,9 +176,9 @@ export default function Billing() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                      <DollarSign className="w-4 h-4 text-white" />
+                      <IndianRupee className="w-4 h-4 text-white" />
                     </div>
-                    <span className="text-lg font-bold">MediCare HMS</span>
+                    <span className="text-lg font-bold">Apex Health Care</span>
                   </div>
                   <p className="text-slate-400 text-sm">Hospital Management System</p>
                 </div>
@@ -247,7 +247,7 @@ export default function Billing() {
               <div className="bg-slate-50 rounded-xl p-4 space-y-2">
                 {[
                   { label: 'Subtotal', value: viewBill.subtotal },
-                  { label: 'Tax (8%)', value: viewBill.tax },
+                  { label: 'GST / Tax', value: viewBill.tax },
                   { label: 'Discount', value: -viewBill.discount, negative: true },
                 ].map(({ label, value, negative }) => (
                   <div key={label} className="flex justify-between text-sm">

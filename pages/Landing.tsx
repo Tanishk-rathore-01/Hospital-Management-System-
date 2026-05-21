@@ -1,61 +1,74 @@
+import { ArrowRight, CalendarDays, HeartPulse, ReceiptIndianRupee, ShieldCheck } from 'lucide-react';
+
 type LandingProps = {
   onGetStarted?: () => void;
 };
 
 export default function Landing({ onGetStarted }: LandingProps) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white p-6">
-      <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-        <div className="space-y-6">
-          <div className="text-sm font-semibold text-slate-500">Apex Health Care</div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">Compassionate care, managed with clarity.</h1>
-          <p className="text-lg text-slate-600 max-w-xl">Apex Health Care — a secure, India-focused hospital platform that unifies patient records, billing, pharmacy and analytics so clinicians spend more time with patients and less on paperwork.</p>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => onGetStarted ? onGetStarted() : window.location.assign('/dashboard')}
-              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-lg shadow-md text-sm font-semibold transition"
-              aria-label="Get started with Apex Health Care"
-            >
-              Get Started
-            </button>
-            <a
-              href="mailto:sales@apexhealthcare.com"
-              className="inline-flex items-center gap-2 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-50 transition"
-              aria-label="Request a demo"
-            >
-              Request a Demo
-            </a>
+    <div className="min-h-[calc(100vh-4rem)] bg-[#071214] p-4 sm:p-6">
+      <section className="relative min-h-[calc(100vh-7rem)] overflow-hidden rounded-lg border border-slate-700/70 bg-[#0b171b] shadow-2xl">
+        <img
+          src="/care-hero.png"
+          alt="Nurse supporting an elderly patient with family in an Indian hospital"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#071214] via-[#071214]/84 to-[#071214]/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#071214] via-transparent to-transparent" />
+
+        <div className="relative flex min-h-[calc(100vh-7rem)] max-w-7xl flex-col justify-between px-5 py-7 sm:px-8 lg:px-10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-400 text-[#061012]">
+              <HeartPulse className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-base font-bold text-slate-50">Apex Health Care</p>
+              <p className="text-xs text-slate-400">Hospital Management System</p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 text-xs text-slate-500 mt-6">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-              <span>Secure clinical records</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
-              <span>Clear billing & insurance</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block" />
-              <span>Pharmacy & inventory sync</span>
+          <div className="max-w-3xl py-12">
+            <h1 className="max-w-3xl text-4xl font-extrabold leading-tight text-slate-50 sm:text-5xl lg:text-6xl">
+              Care that stays close, even when the day is full.
+            </h1>
+            <div className="mt-5 h-0.5 w-24 rounded-full bg-teal-400" />
+            <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+              Apex Health Care brings appointments, records, billing, pharmacy, and analytics into one calm workspace for Indian hospitals.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                onClick={() => (onGetStarted ? onGetStarted() : window.location.assign('/dashboard'))}
+                className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-5 py-3 text-sm font-bold text-[#041012] shadow-lg shadow-teal-500/20 hover:bg-teal-400"
+                aria-label="Enter the Apex Health Care dashboard"
+              >
+                Enter Dashboard
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <a
+                href="mailto:care@apexhealth.in"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/70 px-5 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800"
+                aria-label="Request a demo by email"
+              >
+                Request a Demo
+              </a>
             </div>
           </div>
-        </div>
 
-        <div className="w-full flex items-center justify-center">
-          <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-lg">
-            <img
-              src="https://images.unsplash.com/photo-1586773860416-65f4a2f8a2f9?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=0a3e7d9a2ed4c3f5f2a1b887f6e6f3a0"
-              alt="Apex Health Care team in a hospital reception"
-              className="w-full h-72 object-cover"
-            />
-            <div className="p-4 bg-white">
-              <p className="text-sm text-slate-600">Trusted by clinicians across India • Secure, compliant, and easy to deploy.</p>
-            </div>
+          <div className="grid gap-3 text-xs text-slate-300 sm:grid-cols-3">
+            {[
+              { icon: ShieldCheck, title: 'Secure clinical records', copy: 'Clear access for care teams' },
+              { icon: ReceiptIndianRupee, title: 'INR billing and insurance', copy: 'GST-ready payment views' },
+              { icon: CalendarDays, title: 'Appointments and pharmacy', copy: 'One queue across departments' },
+            ].map(({ icon: Icon, title, copy }) => (
+              <div key={title} className="rounded-lg border border-slate-700/70 bg-[#071214]/72 p-4 backdrop-blur">
+                <Icon className="mb-3 h-5 w-5 text-teal-300" />
+                <p className="font-semibold text-slate-100">{title}</p>
+                <p className="mt-1 text-slate-500">{copy}</p>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

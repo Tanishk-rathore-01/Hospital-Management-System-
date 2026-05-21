@@ -227,9 +227,9 @@ export default function MedicalRecords() {
                   {[
                     { label: 'Blood Pressure', value: `${viewRecord.vitals.bloodPressure} mmHg`, icon: Heart, color: 'text-rose-500 bg-rose-50' },
                     { label: 'Heart Rate', value: `${viewRecord.vitals.heartRate} bpm`, icon: Activity, color: 'text-red-500 bg-red-50' },
-                    { label: 'Temperature', value: `${viewRecord.vitals.temperature}°F`, icon: Thermometer, color: 'text-orange-500 bg-orange-50' },
-                    { label: 'Weight', value: `${viewRecord.vitals.weight} lbs`, icon: Activity, color: 'text-blue-500 bg-blue-50' },
-                    { label: 'Height', value: `${viewRecord.vitals.height} inches`, icon: Activity, color: 'text-indigo-500 bg-indigo-50' },
+                    { label: 'Temperature', value: `${viewRecord.vitals.temperature}°C`, icon: Thermometer, color: 'text-orange-500 bg-orange-50' },
+                    { label: 'Weight', value: `${viewRecord.vitals.weight} kg`, icon: Activity, color: 'text-blue-500 bg-blue-50' },
+                    { label: 'Height', value: `${viewRecord.vitals.height} cm`, icon: Activity, color: 'text-indigo-500 bg-indigo-50' },
                     { label: 'O₂ Saturation', value: `${viewRecord.vitals.oxygenSaturation}%`, icon: Droplets, color: 'text-cyan-500 bg-cyan-50' },
                   ].map(({ label, value, icon: Icon, color }) => (
                     <div key={label} className="bg-slate-50 rounded-xl p-4 text-center">

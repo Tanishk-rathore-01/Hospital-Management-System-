@@ -1,270 +1,351 @@
-import { Users, Calendar, DollarSign, Pill, TrendingUp, TrendingDown, Activity, Clock, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
+import {
+  Activity, AlertCircle, ArrowRight, Bed, Calendar, CheckCircle, Clock,
+  IndianRupee, Pill, ReceiptIndianRupee, UserPlus, Users
+} from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { patients, appointments, bills, medicines, revenueData, departmentData, appointmentTrendData } from '../data/mockData';
-import { formatINR2, formatINR } from '../utils/money';
+import {
+  patients, appointments, bills, medicines, revenueData,
+  appointmentTrendData, todayIso
+} from '../data/mockData';
+import { formatINR, formatINR2, formatINRCompact } from '../utils/money';
 
+const currentRevenue = revenueData[revenueData.length - 1]?.revenue ?? 0;
+const previousRevenue = revenueData[revenueData.length - 2]?.revenue ?? currentRevenue;
+const todayAppointments = appointments.filter((appointment) => appointment.date === todayIso);
+const pendingBills = bills.filter((bill) => bill.status === 'Pending' || bill.status === 'Overdue' || bill.status === 'Partial');
+const stockAlerts = medicines.filter((medicine) => medicine.status === 'Low Stock' || medicine.status === 'Out of Stock' || medicine.status === 'Expired');
 
 const stats = [
   {
-    label: 'Total Patients', value: patients.length, icon: Users,
-    change: '+12%', positive: true,
-    bg: 'from-blue-500 to-blue-600',
-    sub: `${patients.filter(p => p.status === 'Active').length} active`
+    label: 'OPD Visits',
+    value: patients.length * 76,
+    icon: Users,
+    change: '+14.6%',
+    positive: true,
+    sub: `${patients.filter((patient) => patient.status === 'Active').length} active records`,
+    tone: 'from-teal-400/18 to-emerald-400/10',
   },
   {
-    label: "Today's Appointments", value: appointments.filter(a => a.date === '2025-07-15').length, icon: Calendar,
-    change: '+5%', positive: true,
-    bg: 'from-violet-500 to-violet-600',
-    sub: `${appointments.filter(a => a.status === 'In Progress').length} in progress`
+    label: 'Appointments',
+    value: todayAppointments.length,
+    icon: Calendar,
+    change: '+8.2%',
+    positive: true,
+    sub: `${appointments.filter((appointment) => appointment.status === 'In Progress').length} in progress`,
+    tone: 'from-sky-400/18 to-blue-400/10',
   },
   {
-    label: 'Monthly Revenue', value: formatINR(69800), icon: DollarSign,
-    change: '-3.2%', positive: false,
-    bg: 'from-emerald-500 to-emerald-600',
-    sub: `vs ${formatINR(72100)} last month`
+    label: 'IPD Occupancy',
+    value: '76%',
+    icon: Bed,
+    change: '+3.1%',
+    positive: true,
+    sub: '109 / 143 beds',
+    tone: 'from-blue-400/18 to-cyan-400/10',
   },
   {
-    label: 'Low Stock Medicines', value: medicines.filter(m => m.status === 'Low Stock' || m.status === 'Out of Stock').length, icon: Pill,
-    change: '+2', positive: false,
-    bg: 'from-rose-500 to-rose-600',
-    sub: `${medicines.filter(m => m.status === 'Out of Stock').length} out of stock`
+    label: 'Monthly Revenue',
+    value: formatINR(currentRevenue),
+    icon: IndianRupee,
+    change: currentRevenue >= previousRevenue ? '+5.8%' : '-3.2%',
+    positive: currentRevenue >= previousRevenue,
+    sub: `vs ${formatINR(previousRevenue)} last month`,
+    tone: 'from-emerald-400/18 to-teal-400/10',
   },
 ];
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl border border-slate-700 text-xs">
-        <p className="font-semibold mb-1">{label}</p>
-        {payload.map((entry: any) => (
-          <p key={entry.name} style={{ color: entry.color }}>
-            {entry.name}: {typeof entry.value === 'number' && entry.name.includes('Revenue') || entry.name.includes('Expense') 
-              ? `₹${entry.value.toLocaleString('en-IN')}` : entry.value}
+const flowData = [
+  { name: 'Registration', value: 142, color: '#2dd4bf' },
+  { name: 'Consultation', value: 246, color: '#60a5fa' },
+  { name: 'Investigations', value: 98, color: '#38bdf8' },
+  { name: 'Pharmacy', value: 76, color: '#f59e0b' },
+  { name: 'Billing', value: 50, color: '#a78bfa' },
+];
 
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+const tooltipStyle = {
+  background: '#071214',
+  border: '1px solid rgba(148, 163, 184, 0.22)',
+  borderRadius: 8,
+  color: '#edf7f6',
 };
 
-export default function Dashboard() {
-  const pendingBills = bills.filter(b => b.status === 'Pending' || b.status === 'Overdue');
-  const todayAppts = appointments.filter(a => a.date === '2025-07-15').slice(0, 5);
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        {stats.map(({ label, value, icon: Icon, change, positive, bg, sub }) => (
-          <div key={label} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-4">
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center shadow-lg`}>
-                <Icon className="w-6 h-6 text-white" />
+    <div className="rounded-lg border border-slate-700/70 bg-[#071214] p-3 text-xs text-slate-100 shadow-2xl">
+      <p className="mb-1 font-semibold">{label}</p>
+      {payload.map((entry: any) => {
+        const isMoney = ['revenue', 'expenses'].includes(String(entry.dataKey).toLowerCase());
+        return (
+          <p key={`${entry.name}-${entry.value}`} style={{ color: entry.color }}>
+            {entry.name}: {isMoney ? formatINR2(entry.value) : entry.value}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const classes =
+    status === 'Completed' || status === 'Paid' || status === 'Dispensed'
+      ? 'border-emerald-400/30 bg-emerald-400/12 text-emerald-200'
+      : status === 'In Progress' || status === 'Partial'
+        ? 'border-blue-400/30 bg-blue-400/12 text-blue-200'
+        : status === 'Cancelled' || status === 'Overdue' || status === 'Out of Stock'
+          ? 'border-rose-400/30 bg-rose-400/12 text-rose-200'
+          : 'border-amber-400/30 bg-amber-400/12 text-amber-200';
+
+  return (
+    <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold ${classes}`}>
+      {status}
+    </span>
+  );
+}
+
+export default function Dashboard() {
+  const collected = bills.reduce((sum, bill) => sum + bill.paid, 0);
+  const outstanding = pendingBills.reduce((sum, bill) => sum + (bill.total - bill.paid), 0);
+  const doctorsAvailable = 4;
+
+  return (
+    <div className="space-y-5 p-4 sm:p-6">
+      <section className="relative overflow-hidden rounded-lg border border-slate-700/70 bg-[#0b171b] shadow-2xl">
+        <div className="absolute inset-y-0 right-0 hidden w-1/2 lg:block">
+          <img
+            src="/care-hero.png"
+            alt="Nurse supporting an elderly patient with family in an Indian hospital"
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0b171b] via-[#0b171b]/44 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0b171b] via-transparent to-transparent" />
+        </div>
+
+        <div className="relative max-w-3xl px-5 py-7 sm:px-8 sm:py-9">
+          <h1 className="max-w-2xl text-3xl font-extrabold leading-tight text-slate-50 sm:text-4xl lg:text-5xl">
+            Care that stays close, even when the day is full.
+          </h1>
+          <div className="mt-4 h-0.5 w-20 rounded-full bg-teal-400" />
+          <p className="mt-5 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
+            Apex Health Care brings appointments, records, billing, pharmacy, and analytics into one calm workspace for Indian hospitals.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-[#041012] shadow-lg shadow-teal-500/20 hover:bg-teal-400">
+              <Calendar className="h-4 w-4" />
+              New Appointment
+            </button>
+            <button className="inline-flex items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/70 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800">
+              <UserPlus className="h-4 w-4" />
+              Add Patient
+            </button>
+            <button className="inline-flex items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/70 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800">
+              <ReceiptIndianRupee className="h-4 w-4" />
+              Generate Invoice
+            </button>
+          </div>
+
+          <div className="mt-6 grid gap-2 text-xs text-slate-300 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              ['Live OPD', patients.length * 7],
+              ['IPD Occupancy', '76%'],
+              ['Collected', formatINR(collected)],
+              ['Outstanding', formatINR(outstanding)],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-slate-700/60 bg-[#071214]/70 px-3 py-2">
+                <span className="text-slate-500">{label}</span>
+                <span className="ml-2 font-bold text-teal-200">{value}</span>
               </div>
-              <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${positive ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'}`}>
-                {positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map(({ label, value, icon: Icon, change, positive, sub, tone }) => (
+          <div key={label} className={`rounded-lg border border-slate-700/70 bg-gradient-to-br ${tone} p-5 shadow-sm`}>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-700/60 bg-[#071214]/70">
+                <Icon className="h-5 w-5 text-teal-200" />
+              </div>
+              <span className={`rounded-md px-2 py-1 text-xs font-semibold ${positive ? 'bg-emerald-400/12 text-emerald-200' : 'bg-rose-400/12 text-rose-200'}`}>
                 {change}
               </span>
             </div>
-            <p className="text-2xl font-bold text-slate-800 mb-1">{value}</p>
-            <p className="text-sm font-medium text-slate-600">{label}</p>
-            <p className="text-xs text-slate-400 mt-1">{sub}</p>
+            <p className="mb-1 text-2xl font-bold text-slate-50">{value}</p>
+            <p className="text-sm font-medium text-slate-300">{label}</p>
+            <p className="mt-1 text-xs text-slate-500">{sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        {/* Revenue Chart */}
-        <div className="xl:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <section className="rounded-lg border border-slate-700/70 bg-[#101d21] p-5 shadow-sm xl:col-span-2">
+          <div className="mb-5 flex items-start justify-between gap-3">
             <div>
-              <h3 className="font-bold text-slate-800">Revenue vs Expenses</h3>
-              <p className="text-xs text-slate-500">Last 7 months overview</p>
+              <h3 className="font-bold text-slate-100">Revenue vs Expenses</h3>
+              <p className="text-xs text-slate-500">INR performance across the last seven months</p>
             </div>
-            <span className="text-xs bg-blue-50 text-blue-600 font-semibold px-3 py-1 rounded-full">2025</span>
+            <span className="rounded-md border border-teal-400/20 bg-teal-400/10 px-3 py-1 text-xs font-semibold text-teal-200">2026</span>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={revenueData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={245}>
+            <AreaChart data={revenueData} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#2dd4bf" stopOpacity={0.28} />
+                  <stop offset="95%" stopColor="#2dd4bf" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#fb7185" stopOpacity={0.24} />
+                  <stop offset="95%" stopColor="#fb7185" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${Math.round(v / 1000)}k`} />
-
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.16)" />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#8fa3ad' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 12, fill: '#8fa3ad' }} axisLine={false} tickLine={false} tickFormatter={(value) => formatINRCompact(value)} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} fill="url(#colorRevenue)" name="Revenue" dot={{ fill: '#3b82f6', r: 3 }} />
-              <Area type="monotone" dataKey="expenses" stroke="#f43f5e" strokeWidth={2.5} fill="url(#colorExpenses)" name="Expenses" dot={{ fill: '#f43f5e', r: 3 }} />
+              <Area type="monotone" dataKey="revenue" stroke="#2dd4bf" strokeWidth={2.5} fill="url(#colorRevenue)" name="Revenue" dot={{ fill: '#2dd4bf', r: 3 }} />
+              <Area type="monotone" dataKey="expenses" stroke="#fb7185" strokeWidth={2.5} fill="url(#colorExpenses)" name="Expenses" dot={{ fill: '#fb7185', r: 3 }} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </section>
 
-        {/* Department Distribution */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+        <section className="rounded-lg border border-slate-700/70 bg-[#101d21] p-5 shadow-sm">
           <div className="mb-4">
-            <h3 className="font-bold text-slate-800">Patients by Department</h3>
-            <p className="text-xs text-slate-500">Current distribution</p>
+            <h3 className="font-bold text-slate-100">Patient Flow</h3>
+            <p className="text-xs text-slate-500">Today across registration to billing</p>
           </div>
-          <ResponsiveContainer width="100%" height={170}>
+          <ResponsiveContainer width="100%" height={190}>
             <PieChart>
-              <Pie data={departmentData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
-                {departmentData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+              <Pie data={flowData} cx="50%" cy="50%" innerRadius={54} outerRadius={80} paddingAngle={3} dataKey="value">
+                {flowData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => [`${value}%`, 'Share']} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${value}`, 'Patients']} />
             </PieChart>
           </ResponsiveContainer>
-          <div className="space-y-1.5 mt-2">
-            {departmentData.slice(0, 4).map((d) => (
-              <div key={d.name} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
-                  <span className="text-slate-600">{d.name}</span>
-                </div>
-                <span className="font-semibold text-slate-700">{d.value}%</span>
+          <div className="mt-3 space-y-2">
+            {flowData.map((item) => (
+              <div key={item.name} className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-slate-400">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                  {item.name}
+                </span>
+                <span className="font-semibold text-slate-200">{item.value}</span>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        {/* Appointment Trends */}
-        <div className="xl:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <section className="rounded-lg border border-slate-700/70 bg-[#101d21] p-5 shadow-sm xl:col-span-2">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h3 className="font-bold text-slate-800">Appointment Trends</h3>
-              <p className="text-xs text-slate-500">This week's appointments</p>
+              <h3 className="font-bold text-slate-100">Appointment Trends</h3>
+              <p className="text-xs text-slate-500">Completed and cancelled consultations this week</p>
             </div>
+            <span className="hidden rounded-md border border-slate-700/70 px-3 py-1 text-xs text-slate-400 sm:inline-flex">
+              {doctorsAvailable} doctors available
+            </span>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={appointmentTrendData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={appointmentTrendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.16)" vertical={false} />
+              <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#8fa3ad' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 12, fill: '#8fa3ad' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="completed" fill="#10b981" radius={[4, 4, 0, 0]} name="Completed" />
-              <Bar dataKey="cancelled" fill="#f43f5e" radius={[4, 4, 0, 0]} name="Cancelled" />
+              <Bar dataKey="completed" fill="#2dd4bf" radius={[4, 4, 0, 0]} name="Completed" />
+              <Bar dataKey="cancelled" fill="#fb7185" radius={[4, 4, 0, 0]} name="Cancelled" />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </section>
 
-        {/* Quick Stats */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <h3 className="font-bold text-slate-800 mb-4">Quick Overview</h3>
+        <section className="rounded-lg border border-slate-700/70 bg-[#101d21] p-5 shadow-sm">
+          <h3 className="mb-4 font-bold text-slate-100">Quick Overview</h3>
           <div className="space-y-3">
             {[
-              { label: 'Scheduled Today', value: appointments.filter(a => a.status === 'Scheduled' && a.date === '2025-07-15').length, icon: Clock, color: 'text-blue-500 bg-blue-50' },
-              { label: 'Completed Today', value: appointments.filter(a => a.status === 'Completed').length, icon: CheckCircle, color: 'text-emerald-500 bg-emerald-50' },
-              { label: 'Overdue Bills', value: bills.filter(b => b.status === 'Overdue').length, icon: AlertCircle, color: 'text-rose-500 bg-rose-50' },
-              { label: 'Doctors Available', value: 4, icon: Activity, color: 'text-violet-500 bg-violet-50' },
+              { label: 'Scheduled Today', value: todayAppointments.filter((appointment) => appointment.status === 'Scheduled').length, icon: Clock, color: 'text-sky-300' },
+              { label: 'Completed Visits', value: appointments.filter((appointment) => appointment.status === 'Completed').length, icon: CheckCircle, color: 'text-emerald-300' },
+              { label: 'Overdue Bills', value: bills.filter((bill) => bill.status === 'Overdue').length, icon: AlertCircle, color: 'text-rose-300' },
+              { label: 'Doctors Available', value: doctorsAvailable, icon: Activity, color: 'text-teal-300' },
             ].map(({ label, value, icon: Icon, color }) => (
-              <div key={label} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${color}`}>
-                  <Icon className="w-4 h-4" />
+              <div key={label} className="flex items-center gap-3 rounded-lg border border-slate-700/60 bg-[#071214]/60 p-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-900/90">
+                  <Icon className={`h-4 w-4 ${color}`} />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs text-slate-500">{label}</p>
-                  <p className="text-lg font-bold text-slate-800">{value}</p>
+                  <p className="text-lg font-bold text-slate-100">{value}</p>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       </div>
 
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        {/* Recent Appointments */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-800">Today's Appointments</h3>
-            <button className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-semibold">
-              View all <ArrowRight className="w-3 h-3" />
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <section className="rounded-lg border border-slate-700/70 bg-[#101d21] p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-bold text-slate-100">Today's Appointment Queue</h3>
+            <button className="flex items-center gap-1 text-xs font-semibold text-teal-300 hover:text-teal-200">
+              View all <ArrowRight className="h-3 w-3" />
             </button>
           </div>
           <div className="space-y-3">
-            {todayAppts.map((appt) => (
-              <div key={appt.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-100 to-violet-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-blue-700">{appt.patientName.split(' ').map(n => n[0]).join('')}</span>
+            {todayAppointments.slice(0, 5).map((appointment) => (
+              <div key={appointment.id} className="flex items-center gap-3 rounded-lg border border-slate-700/60 bg-[#071214]/50 p-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-teal-400/12">
+                  <span className="text-xs font-bold text-teal-200">{appointment.patientName.split(' ').map((name) => name[0]).join('')}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-700 truncate">{appt.patientName}</p>
-                  <p className="text-xs text-slate-500 truncate">{appt.doctorName} • {appt.time}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-100">{appointment.patientName}</p>
+                  <p className="truncate text-xs text-slate-500">{appointment.doctorName} | {appointment.time}</p>
                 </div>
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 ${
-                  appt.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
-                  appt.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
-                  appt.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                  'bg-amber-100 text-amber-700'
-                }`}>
-                  {appt.status}
-                </span>
+                <StatusBadge status={appointment.status} />
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Pending Bills */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-800">Pending Bills</h3>
-            <button className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-semibold">
-              View all <ArrowRight className="w-3 h-3" />
+        <section className="rounded-lg border border-slate-700/70 bg-[#101d21] p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-bold text-slate-100">Billing & Pharmacy Snapshot</h3>
+            <button className="flex items-center gap-1 text-xs font-semibold text-teal-300 hover:text-teal-200">
+              Review <ArrowRight className="h-3 w-3" />
             </button>
           </div>
-          <div className="space-y-3">
-            {pendingBills.map((bill) => (
-              <div key={bill.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-100 to-rose-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-amber-700">{bill.patientName.split(' ').map(n => n[0]).join('')}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-700 truncate">{bill.patientName}</p>
-                  <p className="text-xs text-slate-500">Due: {bill.dueDate}</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-              <p className="text-sm font-bold text-slate-800">{formatINR2(bill.total)}</p>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    bill.status === 'Overdue' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {bill.status}
-                  </span>
-                </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-slate-700/60 bg-[#071214]/50 p-4">
+              <div className="mb-3 flex items-center gap-2 text-slate-300">
+                <IndianRupee className="h-4 w-4 text-teal-300" />
+                <span className="text-sm font-semibold">Collections</span>
               </div>
-            ))}
-            {/* Medicine Alerts */}
-            <div className="pt-2 border-t border-slate-100">
-              <p className="text-xs font-semibold text-slate-500 mb-2">⚠ Medicine Alerts</p>
-              {medicines.filter(m => m.status === 'Low Stock' || m.status === 'Out of Stock').map((m) => (
-                <div key={m.id} className="flex items-center justify-between py-1.5">
-                  <span className="text-xs text-slate-700">{m.name}</span>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    m.status === 'Out of Stock' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {m.stock} {m.unit}
-                  </span>
-                </div>
-              ))}
+              <p className="text-2xl font-bold text-slate-50">{formatINR(collected)}</p>
+              <p className="mt-1 text-xs text-slate-500">{formatINR(outstanding)} outstanding</p>
+            </div>
+            <div className="rounded-lg border border-slate-700/60 bg-[#071214]/50 p-4">
+              <div className="mb-3 flex items-center gap-2 text-slate-300">
+                <Pill className="h-4 w-4 text-amber-300" />
+                <span className="text-sm font-semibold">Medicine Alerts</span>
+              </div>
+              <p className="text-2xl font-bold text-slate-50">{stockAlerts.length}</p>
+              <p className="mt-1 text-xs text-slate-500">Low, expired, or out-of-stock items</p>
             </div>
           </div>
-        </div>
+          <div className="mt-4 space-y-2">
+            {stockAlerts.slice(0, 4).map((medicine) => (
+              <div key={medicine.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-700/60 px-3 py-2 text-xs">
+                <span className="truncate text-slate-300">{medicine.name}</span>
+                <StatusBadge status={medicine.status} />
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );
