@@ -9,7 +9,6 @@ The project provides a clean hospital admin interface for managing patients, app
 
 ## Preview
 
-> Add your project screenshots here after running the app locally or deploying it.
 
 ```md
 
