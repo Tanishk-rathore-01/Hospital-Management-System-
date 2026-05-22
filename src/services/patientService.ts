@@ -1,10 +1,11 @@
 import { Patient } from '../types';
 import { patients as mockPatients } from '../../data/mockData';
-import { apiClient } from './api';
+
+let patients = [...mockPatients];
 
 export const patientService = {
   async getAll(): Promise<Patient[]> {
-    return Promise.resolve([...mockPatients]);
+    return Promise.resolve([...patients]);
   },
 
   async getById(id: string): Promise<Patient | null> {
@@ -13,12 +14,12 @@ export const patientService = {
   },
 
   async create(data: Omit<Patient, 'id' | 'registrationDate'>): Promise<Patient> {
-    const all = await this.getAll();
     const newPatient: Patient = {
       ...data,
-      id: `P${String(all.length + 1).padStart(3, '0')}`,
+      id: `P${String(patients.length + 1).padStart(3, '0')}`,
       registrationDate: new Date().toISOString().split('T')[0],
     };
+    patients = [...patients, newPatient];
     return Promise.resolve(newPatient);
   },
 
@@ -26,10 +27,13 @@ export const patientService = {
     const all = await this.getAll();
     const patient = all.find(p => p.id === id);
     if (!patient) throw new Error('Patient not found');
-    return Promise.resolve({ ...patient, ...data });
+    const updated = { ...patient, ...data };
+    patients = patients.map(p => p.id === id ? updated : p);
+    return Promise.resolve(updated);
   },
 
   async delete(id: string): Promise<void> {
+    patients = patients.filter(p => p.id !== id);
     return Promise.resolve();
   },
 

@@ -1,10 +1,11 @@
 import { PharmacyOrder } from '../types';
 import { pharmacyOrders as mockOrders } from '../../data/mockData';
-import { apiClient } from './api';
+
+let orders = [...mockOrders];
 
 export const pharmacyService = {
   async getAll(): Promise<PharmacyOrder[]> {
-    return Promise.resolve([...mockOrders]);
+    return Promise.resolve([...orders]);
   },
 
   async getById(id: string): Promise<PharmacyOrder | null> {
@@ -23,33 +24,40 @@ export const pharmacyService = {
   },
 
   async create(data: Omit<PharmacyOrder, 'id'>): Promise<PharmacyOrder> {
-    const all = await this.getAll();
     const newOrder: PharmacyOrder = {
       ...data,
-      id: `PO${String(all.length + 1).padStart(3, '0')}`,
+      id: `PO${String(orders.length + 1).padStart(3, '0')}`,
     };
+    orders = [newOrder, ...orders];
     return Promise.resolve(newOrder);
   },
 
   async dispenseOrder(id: string): Promise<PharmacyOrder> {
     const order = await this.getById(id);
     if (!order) throw new Error('Order not found');
-    return Promise.resolve({ ...order, status: 'Dispensed' });
+    const updated: PharmacyOrder = { ...order, status: 'Dispensed' };
+    orders = orders.map(o => o.id === id ? updated : o);
+    return Promise.resolve(updated);
   },
 
   async cancelOrder(id: string): Promise<PharmacyOrder> {
     const order = await this.getById(id);
     if (!order) throw new Error('Order not found');
-    return Promise.resolve({ ...order, status: 'Cancelled' });
+    const updated: PharmacyOrder = { ...order, status: 'Cancelled' };
+    orders = orders.map(o => o.id === id ? updated : o);
+    return Promise.resolve(updated);
   },
 
   async update(id: string, data: Partial<PharmacyOrder>): Promise<PharmacyOrder> {
     const order = await this.getById(id);
     if (!order) throw new Error('Order not found');
-    return Promise.resolve({ ...order, ...data });
+    const updated = { ...order, ...data };
+    orders = orders.map(o => o.id === id ? updated : o);
+    return Promise.resolve(updated);
   },
 
   async delete(id: string): Promise<void> {
+    orders = orders.filter(o => o.id !== id);
     return Promise.resolve();
   },
 };

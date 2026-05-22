@@ -1,10 +1,11 @@
 import { Bill, BillStatus } from '../types';
 import { bills as mockBills } from '../../data/mockData';
-import { apiClient } from './api';
+
+let bills = [...mockBills];
 
 export const billService = {
   async getAll(): Promise<Bill[]> {
-    return Promise.resolve([...mockBills]);
+    return Promise.resolve([...bills]);
   },
 
   async getById(id: string): Promise<Bill | null> {
@@ -22,15 +23,16 @@ export const billService = {
     const bill = all.find(b => b.id === id);
     if (!bill) throw new Error('Bill not found');
     const updated: Bill = { ...bill, status: 'Paid' as BillStatus, paid: bill.total };
+    bills = bills.map(b => b.id === id ? updated : b);
     return Promise.resolve(updated);
   },
 
   async create(data: Omit<Bill, 'id'>): Promise<Bill> {
-    const all = await this.getAll();
     const newBill: Bill = {
       ...data,
-      id: `B${String(all.length + 1).padStart(3, '0')}`,
+      id: `B${String(bills.length + 1).padStart(3, '0')}`,
     };
+    bills = [newBill, ...bills];
     return Promise.resolve(newBill);
   },
 
@@ -38,10 +40,13 @@ export const billService = {
     const all = await this.getAll();
     const bill = all.find(b => b.id === id);
     if (!bill) throw new Error('Bill not found');
-    return Promise.resolve({ ...bill, ...data });
+    const updated = { ...bill, ...data };
+    bills = bills.map(b => b.id === id ? updated : b);
+    return Promise.resolve(updated);
   },
 
   async delete(id: string): Promise<void> {
+    bills = bills.filter(b => b.id !== id);
     return Promise.resolve();
   },
 };

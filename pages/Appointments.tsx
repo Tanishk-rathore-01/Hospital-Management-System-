@@ -359,8 +359,8 @@ export default function Appointments() {
             </div>
             <div className="flex gap-3 px-5 pb-5">
               <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600">Cancel</button>
-              <button onClick={handleSubmit} disabled={createMutation.isLoading} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-500 text-white rounded-xl hover:from-violet-700 hover:to-purple-600 shadow-lg shadow-violet-500/25 disabled:opacity-50">
-                {createMutation.isLoading ? 'Scheduling...' : 'Schedule'}
+              <button onClick={handleSubmit} disabled={createMutation.isPending} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-500 text-white rounded-xl hover:from-violet-700 hover:to-purple-600 shadow-lg shadow-violet-500/25 disabled:opacity-50">
+                {createMutation.isPending ? 'Scheduling...' : 'Schedule'}
               </button>
             </div>
           </div>

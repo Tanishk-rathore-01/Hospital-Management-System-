@@ -1,7 +1,8 @@
 import { Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import AppErrorBoundary from './components/AppErrorBoundary';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 
 // Lazy load pages for code splitting
@@ -30,6 +31,7 @@ function PageLoader() {
 
 export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-[#071214] text-slate-100" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -41,20 +43,22 @@ export default function App() {
       >
         <Header />
         <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto pb-24 lg:pb-0">
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/landing" element={<Landing />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/patients" element={<Patients />} />
-              <Route path="/appointments" element={<Appointments />} />
-              <Route path="/medical-records" element={<MedicalRecords />} />
-              <Route path="/billing" element={<Billing />} />
-              <Route path="/pharmacy" element={<Pharmacy />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+          <AppErrorBoundary key={location.pathname}>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/landing" element={<Landing />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/patients" element={<Patients />} />
+                <Route path="/appointments" element={<Appointments />} />
+                <Route path="/medical-records" element={<MedicalRecords />} />
+                <Route path="/billing" element={<Billing />} />
+                <Route path="/pharmacy" element={<Pharmacy />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </AppErrorBoundary>
         </main>
       </div>
     </div>

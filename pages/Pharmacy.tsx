@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Search, Plus, Filter, AlertTriangle, Package, ShoppingCart, Eye, X, Edit2, AlertCircle } from 'lucide-react';
 import { formatINR2 } from '../utils/money';
-import { Medicine, PharmacyOrder } from '../types';
+import { Medicine } from '../types';
 import { useMedicines, useMedicineLowStockAlerts } from '../src/hooks/useMedicines';
 import { usePharmacyOrders, useDispensePharmacyOrder } from '../src/hooks/usePharmacy';
 

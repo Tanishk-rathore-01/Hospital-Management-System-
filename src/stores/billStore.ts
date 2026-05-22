@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Bill, BillStatus } from '../types';
+import { Bill } from '../types';
 import { billService } from '../services/billService';
 
 interface BillStore {

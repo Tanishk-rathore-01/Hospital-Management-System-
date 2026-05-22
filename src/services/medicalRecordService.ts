@@ -1,10 +1,11 @@
 import { MedicalRecord } from '../types';
 import { medicalRecords as mockRecords } from '../../data/mockData';
-import { apiClient } from './api';
+
+let records = [...mockRecords];
 
 export const medicalRecordService = {
   async getAll(): Promise<MedicalRecord[]> {
-    return Promise.resolve([...mockRecords]);
+    return Promise.resolve([...records]);
   },
 
   async getById(id: string): Promise<MedicalRecord | null> {
@@ -23,11 +24,11 @@ export const medicalRecordService = {
   },
 
   async create(data: Omit<MedicalRecord, 'id'>): Promise<MedicalRecord> {
-    const all = await this.getAll();
     const newRecord: MedicalRecord = {
       ...data,
-      id: `MR${String(all.length + 1).padStart(3, '0')}`,
+      id: `MR${String(records.length + 1).padStart(3, '0')}`,
     };
+    records = [newRecord, ...records];
     return Promise.resolve(newRecord);
   },
 
@@ -35,10 +36,13 @@ export const medicalRecordService = {
     const all = await this.getAll();
     const record = all.find(r => r.id === id);
     if (!record) throw new Error('Medical record not found');
-    return Promise.resolve({ ...record, ...data });
+    const updated = { ...record, ...data };
+    records = records.map(r => r.id === id ? updated : r);
+    return Promise.resolve(updated);
   },
 
   async delete(id: string): Promise<void> {
+    records = records.filter(r => r.id !== id);
     return Promise.resolve();
   },
 

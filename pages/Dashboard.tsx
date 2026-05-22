@@ -6,57 +6,13 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
+import { Link } from 'react-router-dom';
 import { formatINR, formatINR2, formatINRCompact } from '../utils/money';
 import { usePatients } from '../src/hooks/usePatients';
 import { useAppointments } from '../src/hooks/useAppointments';
 import { useBills } from '../src/hooks/useBills';
 import { useMedicines } from '../src/hooks/useMedicines';
 import { revenueData, appointmentTrendData, todayIso } from '../data/mockData';
-
-const currentRevenue = revenueData[revenueData.length - 1]?.revenue ?? 0;
-const previousRevenue = revenueData[revenueData.length - 2]?.revenue ?? currentRevenue;
-const todayAppointments = appointments.filter((appointment) => appointment.date === todayIso);
-const pendingBills = bills.filter((bill) => bill.status === 'Pending' || bill.status === 'Overdue' || bill.status === 'Partial');
-const stockAlerts = medicines.filter((medicine) => medicine.status === 'Low Stock' || medicine.status === 'Out of Stock' || medicine.status === 'Expired');
-
-const stats = [
-  {
-    label: 'OPD Visits',
-    value: patients.length * 76,
-    icon: Users,
-    change: '+14.6%',
-    positive: true,
-    sub: `${patients.filter((patient) => patient.status === 'Active').length} active records`,
-    tone: 'from-teal-400/18 to-emerald-400/10',
-  },
-  {
-    label: 'Appointments',
-    value: todayAppointments.length,
-    icon: Calendar,
-    change: '+8.2%',
-    positive: true,
-    sub: `${appointments.filter((appointment) => appointment.status === 'In Progress').length} in progress`,
-    tone: 'from-sky-400/18 to-blue-400/10',
-  },
-  {
-    label: 'IPD Occupancy',
-    value: '76%',
-    icon: Bed,
-    change: '+3.1%',
-    positive: true,
-    sub: '109 / 143 beds',
-    tone: 'from-blue-400/18 to-cyan-400/10',
-  },
-  {
-    label: 'Monthly Revenue',
-    value: formatINR(currentRevenue),
-    icon: IndianRupee,
-    change: currentRevenue >= previousRevenue ? '+5.8%' : '-3.2%',
-    positive: currentRevenue >= previousRevenue,
-    sub: `vs ${formatINR(previousRevenue)} last month`,
-    tone: 'from-emerald-400/18 to-teal-400/10',
-  },
-];
 
 const flowData = [
   { name: 'Registration', value: 142, color: '#2dd4bf' },
@@ -126,6 +82,23 @@ export default function Dashboard() {
   const collected = bills.reduce((sum, bill) => sum + bill.paid, 0);
   const outstanding = pendingBills.reduce((sum, bill) => sum + (bill.total - bill.paid), 0);
   const doctorsAvailable = 4;
+  const careSignals = [
+    {
+      label: 'Triage desk',
+      value: `${todayAppointments.filter((appointment) => appointment.status === 'Scheduled').length} waiting`,
+      detail: 'Front desk has the next OPD files ready.',
+    },
+    {
+      label: 'Nursing handover',
+      value: '12 notes',
+      detail: 'Vitals and follow-up reminders are grouped.',
+    },
+    {
+      label: 'Family support',
+      value: `${pendingBills.length} billing helps`,
+      detail: 'Counsellor can review pending payment cases.',
+    },
+  ];
 
   const stats = [
     {
@@ -198,7 +171,7 @@ export default function Dashboard() {
         </div>
 
         <div className="relative max-w-3xl px-5 py-7 sm:px-8 sm:py-9">
-          <h1 className="max-w-2xl text-3xl font-extrabold leading-tight text-slate-50 sm:text-4xl lg:text-5xl">
+          <h1 className="max-w-2xl break-words text-2xl font-extrabold leading-tight text-slate-50 sm:text-4xl lg:text-5xl">
             Care that stays close, even when the day is full.
           </h1>
           <div className="mt-4 h-0.5 w-20 rounded-full bg-teal-400" />
@@ -206,18 +179,18 @@ export default function Dashboard() {
             Apex Health Care brings appointments, records, billing, pharmacy, and analytics into one calm workspace for Indian hospitals.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <button className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-[#041012] shadow-lg shadow-teal-500/20 hover:bg-teal-400">
+            <Link to="/appointments" className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-[#041012] shadow-lg shadow-teal-500/20 hover:bg-teal-400 sm:w-auto">
               <Calendar className="h-4 w-4" />
               New Appointment
-            </button>
-            <button className="inline-flex items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/70 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800">
+            </Link>
+            <Link to="/patients" className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/70 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:w-auto">
               <UserPlus className="h-4 w-4" />
               Add Patient
-            </button>
-            <button className="inline-flex items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/70 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800">
+            </Link>
+            <Link to="/billing" className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/70 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:w-auto">
               <ReceiptIndianRupee className="h-4 w-4" />
               Generate Invoice
-            </button>
+            </Link>
           </div>
 
           <div className="mt-6 grid gap-2 text-xs text-slate-300 sm:grid-cols-2 xl:grid-cols-4">
@@ -230,6 +203,16 @@ export default function Dashboard() {
               <div key={label} className="rounded-lg border border-slate-700/60 bg-[#071214]/70 px-3 py-2">
                 <span className="text-slate-500">{label}</span>
                 <span className="ml-2 font-bold text-teal-200">{value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {careSignals.map((signal) => (
+              <div key={signal.label} className="rounded-lg border border-slate-700/60 bg-slate-950/35 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{signal.label}</p>
+                <p className="mt-1 text-lg font-bold text-slate-50">{signal.value}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{signal.detail}</p>
               </div>
             ))}
           </div>
@@ -364,9 +347,9 @@ export default function Dashboard() {
         <section className="rounded-lg border border-slate-700/70 bg-[#101d21] p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-bold text-slate-100">Today's Appointment Queue</h3>
-            <button className="flex items-center gap-1 text-xs font-semibold text-teal-300 hover:text-teal-200">
+            <Link to="/appointments" className="flex items-center gap-1 text-xs font-semibold text-teal-300 hover:text-teal-200">
               View all <ArrowRight className="h-3 w-3" />
-            </button>
+            </Link>
           </div>
           <div className="space-y-3">
             {todayAppointments.slice(0, 5).map((appointment) => (
@@ -387,9 +370,9 @@ export default function Dashboard() {
         <section className="rounded-lg border border-slate-700/70 bg-[#101d21] p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-bold text-slate-100">Billing & Pharmacy Snapshot</h3>
-            <button className="flex items-center gap-1 text-xs font-semibold text-teal-300 hover:text-teal-200">
+            <Link to="/billing" className="flex items-center gap-1 text-xs font-semibold text-teal-300 hover:text-teal-200">
               Review <ArrowRight className="h-3 w-3" />
-            </button>
+            </Link>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-slate-700/60 bg-[#071214]/50 p-4">

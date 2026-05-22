@@ -2,10 +2,11 @@
 import {
   LayoutDashboard, Users, Calendar, FileText, Receipt,
   Pill, BarChart3, ChevronLeft, ChevronRight, Heart, LogOut,
-  Settings, Bell, ShieldCheck
+  Settings, Bell, ShieldCheck, X, CheckCircle
 } from 'lucide-react';
 import { NavItem } from '../types';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -22,7 +23,12 @@ const navItems = [
   { id: 'reports' as NavItem, label: 'Reports', icon: BarChart3, color: 'text-blue-400', path: '/reports' },
 ];
 
+type SidebarPanel = 'notifications' | 'settings' | 'logout' | null;
+
 export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
+  const navigate = useNavigate();
+  const [activePanel, setActivePanel] = useState<SidebarPanel>(null);
+
   return (
     <>
       <aside
@@ -90,12 +96,14 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
         <div className="px-3 py-4 border-t border-slate-700/60 space-y-1">
           {[
-            { icon: Bell, label: 'Notifications', badge: '3' },
-            { icon: Settings, label: 'Settings' },
-            { icon: LogOut, label: 'Logout' },
-          ].map(({ icon: Icon, label, badge }) => (
+            { icon: Bell, label: 'Notifications', badge: '3', panel: 'notifications' as const },
+            { icon: Settings, label: 'Settings', panel: 'settings' as const },
+            { icon: LogOut, label: 'Logout', panel: 'logout' as const },
+          ].map(({ icon: Icon, label, badge, panel }) => (
             <button
               key={label}
+              type="button"
+              onClick={() => setActivePanel(panel)}
               aria-label={label}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition-all group ${
                 collapsed ? 'justify-center' : ''
@@ -120,7 +128,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-white truncate">Rohit Sharma</p>
+                <p className="text-sm font-semibold text-white truncate">Tanishk Rathore</p>
                 <p className="text-xs text-slate-400 truncate">admin@apexhealth.in</p>
               </div>
             )}
@@ -142,6 +150,91 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
           </NavLink>
         ))}
       </nav>
+
+      {activePanel && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-lg border border-slate-700/70 bg-[#0b171b] p-5 text-slate-100 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-lg font-bold">
+                  {activePanel === 'notifications' && 'Notifications'}
+                  {activePanel === 'settings' && 'Settings'}
+                  {activePanel === 'logout' && 'Logout'}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {activePanel === 'notifications' && 'Important hospital desk updates.'}
+                  {activePanel === 'settings' && 'Current workspace preferences.'}
+                  {activePanel === 'logout' && 'Return to the public landing screen.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActivePanel(null)}
+                aria-label="Close panel"
+                className="rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {activePanel === 'notifications' && (
+              <div className="space-y-3">
+                {[
+                  ['Appointment desk', '3 patients are ready for check-in.'],
+                  ['Pharmacy stock', 'Review low stock before evening rounds.'],
+                  ['Billing', 'One overdue invoice needs follow-up.'],
+                ].map(([title, detail]) => (
+                  <div key={title} className="rounded-md border border-slate-700/60 bg-slate-900/50 p-3">
+                    <p className="text-sm font-semibold text-slate-100">{title}</p>
+                    <p className="mt-1 text-xs text-slate-500">{detail}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activePanel === 'settings' && (
+              <div className="space-y-3">
+                {['Dark comfort mode', 'Compact navigation', 'Care alerts'].map((label) => (
+                  <div key={label} className="flex items-center justify-between rounded-md border border-slate-700/60 bg-slate-900/50 px-3 py-2.5">
+                    <span className="text-sm font-semibold text-slate-200">{label}</span>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-1 text-xs font-semibold text-emerald-200">
+                      <CheckCircle className="h-3 w-3" />
+                      On
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activePanel === 'logout' && (
+              <>
+                <p className="text-sm leading-6 text-slate-400">
+                  This will close the current admin view and open the landing screen. Your frontend mock data stays in this browser session.
+                </p>
+                <div className="mt-5 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActivePanel(null)}
+                    className="flex-1 rounded-lg border border-slate-700/70 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate('/');
+                      setActivePanel(null);
+                    }}
+                    className="flex-1 rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-[#041012] hover:bg-teal-400"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

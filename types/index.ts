@@ -15,6 +15,8 @@ export interface Patient {
   allergies: string[];
 }
 
+export type PatientStatus = Patient['status'];
+
 export interface Doctor {
   id: string;
   name: string;
@@ -30,6 +32,8 @@ export interface Doctor {
   patients: number;
 }
 
+export type DoctorStatus = Doctor['status'];
+
 export interface Appointment {
   id: string;
   patientId: string;
@@ -44,6 +48,8 @@ export interface Appointment {
   notes: string;
   fee: number;
 }
+
+export type AppointmentStatus = Appointment['status'];
 
 export interface MedicalRecord {
   id: string;
@@ -87,6 +93,8 @@ export interface LabResult {
   date: string;
 }
 
+export type LabResultStatus = LabResult['status'];
+
 export interface Bill {
   id: string;
   patientId: string;
@@ -104,6 +112,8 @@ export interface Bill {
   insurance: string;
   insuranceCoverage: number;
 }
+
+export type BillStatus = Bill['status'];
 
 export interface BillItem {
   description: string;
@@ -129,6 +139,8 @@ export interface Medicine {
   status: 'In Stock' | 'Low Stock' | 'Out of Stock' | 'Expired';
 }
 
+export type MedicineStatus = Medicine['status'];
+
 export interface PharmacyOrder {
   id: string;
   patientId: string;
@@ -140,6 +152,8 @@ export interface PharmacyOrder {
   total: number;
   status: 'Pending' | 'Dispensed' | 'Cancelled';
 }
+
+export type PharmacyOrderStatus = PharmacyOrder['status'];
 
 export interface OrderMedicine {
   medicineId: string;
