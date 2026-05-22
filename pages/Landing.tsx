@@ -1,15 +1,29 @@
 import { ArrowRight, CalendarDays, HeartPulse, ReceiptIndianRupee, ShieldCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 type LandingProps = {
   onGetStarted?: () => void;
 };
 
+const careHeroSrc = `${import.meta.env.BASE_URL}care-hero.png`;
+
 export default function Landing({ onGetStarted }: LandingProps) {
+  const navigate = useNavigate();
+
+  const handleGetStarted = () => {
+    if (onGetStarted) {
+      onGetStarted();
+      return;
+    }
+
+    navigate('/dashboard');
+  };
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#071214] p-4 sm:p-6">
       <section className="relative min-h-[calc(100vh-7rem)] overflow-hidden rounded-lg border border-slate-700/70 bg-[#0b171b] shadow-2xl">
         <img
-          src="/care-hero.png"
+          src={careHeroSrc}
           alt="Nurse supporting an elderly patient with family in an Indian hospital"
           className="absolute inset-0 h-full w-full object-cover"
         />
@@ -37,7 +51,7 @@ export default function Landing({ onGetStarted }: LandingProps) {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <button
-                onClick={() => (onGetStarted ? onGetStarted() : window.location.assign('/dashboard'))}
+                onClick={handleGetStarted}
                 className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-5 py-3 text-sm font-bold text-[#041012] shadow-lg shadow-teal-500/20 hover:bg-teal-400"
                 aria-label="Enter the Apex Health Care dashboard"
               >

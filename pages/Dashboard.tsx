@@ -29,6 +29,8 @@ const tooltipStyle = {
   color: '#edf7f6',
 };
 
+const careHeroSrc = `${import.meta.env.BASE_URL}care-hero.png`;
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
 
@@ -162,7 +164,7 @@ export default function Dashboard() {
       <section className="relative overflow-hidden rounded-lg border border-slate-700/70 bg-[#0b171b] shadow-2xl">
         <div className="absolute inset-y-0 right-0 hidden w-1/2 lg:block">
           <img
-            src="/care-hero.png"
+            src={careHeroSrc}
             alt="Nurse supporting an elderly patient with family in an Indian hospital"
             className="h-full w-full object-cover"
           />
