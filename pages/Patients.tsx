@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Search, Plus, Filter, Edit2, Eye, Trash2, Phone, AlertTriangle, X } from 'lucide-react';
-import { patients as initialPatients } from '../data/mockData';
+import { Search, Plus, Filter, Edit2, Eye, Trash2, Phone, AlertTriangle, X, AlertCircle } from 'lucide-react';
 import { Patient } from '../types';
+import { usePatients, useCreatePatient, useUpdatePatient, useDeletePatient } from '../src/hooks/usePatients';
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -12,7 +12,11 @@ const emptyPatient: Omit<Patient, 'id' | 'registrationDate'> = {
 };
 
 export default function Patients() {
-  const [patients, setPatients] = useState<Patient[]>(initialPatients);
+  const { data: patients = [], isLoading, error } = usePatients();
+  const createMutation = useCreatePatient();
+  const updateMutation = useUpdatePatient();
+  const deleteMutation = useDeletePatient();
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
@@ -45,21 +49,31 @@ export default function Patients() {
   const handleSubmit = () => {
     if (!formData.name) return;
     if (editMode && viewPatient) {
-      setPatients(prev => prev.map(p => p.id === viewPatient.id ? { ...p, ...formData } : p));
+      updateMutation.mutate(
+        { id: viewPatient.id, data: formData },
+        {
+          onSuccess: () => {
+            setShowModal(false);
+            setViewPatient(null);
+            setEditMode(false);
+          },
+        }
+      );
     } else {
-      const newPatient: Patient = {
-        ...formData,
-        id: `P${String(patients.length + 1).padStart(3, '0')}`,
-        registrationDate: new Date().toISOString().split('T')[0],
-      };
-      setPatients(prev => [...prev, newPatient]);
+      createMutation.mutate(formData, {
+        onSuccess: () => {
+          setShowModal(false);
+          setFormData(emptyPatient);
+          setEditMode(false);
+        },
+      });
     }
-    setShowModal(false);
-    setViewPatient(null);
   };
 
   const handleDelete = (id: string) => {
-    setPatients(prev => prev.filter(p => p.id !== id));
+    if (confirm('Delete this patient?')) {
+      deleteMutation.mutate(id);
+    }
   };
 
   const addAllergy = () => {
@@ -72,6 +86,33 @@ export default function Patients() {
   const removeAllergy = (a: string) => {
     setFormData(prev => ({ ...prev, allergies: prev.allergies.filter(x => x !== a) }));
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-8 bg-slate-700 rounded w-1/3 animate-pulse" />
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-slate-700 rounded animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <div>
+            <p className="font-semibold text-red-700">Error loading patients</p>
+            <p className="text-sm text-red-600">{(error as Error).message}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-5">
@@ -325,8 +366,8 @@ export default function Patients() {
               <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors">
                 Cancel
               </button>
-              <button onClick={handleSubmit} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:from-blue-700 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/25">
-                {editMode ? 'Save Changes' : 'Register Patient'}
+              <button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:from-blue-700 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
+                {createMutation.isPending || updateMutation.isPending ? (editMode ? 'Saving...' : 'Registering...') : (editMode ? 'Save Changes' : 'Register Patient')}
               </button>
             </div>
           </div>

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Search, Eye, Plus, FileText, X, Activity, Thermometer, Heart, Droplets } from 'lucide-react';
-import { medicalRecords } from '../data/mockData';
+import { Search, Eye, Plus, FileText, X, Activity, Thermometer, Heart, Droplets, AlertCircle } from 'lucide-react';
 import { MedicalRecord } from '../types';
+import { useMedicalRecords } from '../src/hooks/useMedicalRecords';
 
 export default function MedicalRecords() {
-  const [records] = useState<MedicalRecord[]>(medicalRecords);
+  const { data: records = [], isLoading, error } = useMedicalRecords();
   const [search, setSearch] = useState('');
   const [viewRecord, setViewRecord] = useState<MedicalRecord | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'prescriptions' | 'labs' | 'vitals'>('overview');
@@ -19,6 +19,33 @@ export default function MedicalRecords() {
     setViewRecord(r);
     setActiveTab('overview');
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-10 bg-slate-700 rounded w-1/3 animate-pulse" />
+        <div className="grid grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-48 bg-slate-700 rounded animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <div>
+            <p className="font-semibold text-red-700">Error loading medical records</p>
+            <p className="text-sm text-red-600">{(error as Error).message}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-5">

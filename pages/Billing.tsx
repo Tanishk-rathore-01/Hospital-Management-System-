@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Search, Eye, Plus, Download, X, IndianRupee, CreditCard, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { formatINR2, formatINR } from '../utils/money';
-
-import { bills as initialBills } from '../data/mockData';
 import { Bill } from '../types';
+import { useBills, useMarkBillPaid } from '../src/hooks/useBills';
 
 const statusIcons = {
   'Paid': CheckCircle,
@@ -20,7 +19,8 @@ const statusColors: Record<string, string> = {
 };
 
 export default function Billing() {
-  const [bills, setBills] = useState<Bill[]>(initialBills);
+  const { data: bills = [], isLoading, error } = useBills();
+  const markPaidMutation = useMarkBillPaid();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [viewBill, setViewBill] = useState<Bill | null>(null);
@@ -36,8 +36,35 @@ export default function Billing() {
   const totalBilled = bills.reduce((sum, b) => sum + b.total, 0);
 
   const markPaid = (id: string) => {
-    setBills(prev => prev.map(b => b.id === id ? { ...b, status: 'Paid', paid: b.total } : b));
+    markPaidMutation.mutate(id);
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-slate-700 rounded animate-pulse" />
+          ))}
+        </div>
+        <div className="h-64 bg-slate-700 rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <div>
+            <p className="font-semibold text-red-700">Error loading bills</p>
+            <p className="text-sm text-red-600">{(error as Error).message}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-5">
@@ -146,8 +173,8 @@ export default function Billing() {
                           <Download className="w-4 h-4" />
                         </button>
                         {bill.status !== 'Paid' && (
-                          <button onClick={() => markPaid(bill.id)} className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors whitespace-nowrap">
-                            Mark Paid
+                          <button onClick={() => markPaid(bill.id)} disabled={markPaidMutation.isPending} className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
+                            {markPaidMutation.isPending ? 'Marking...' : 'Mark Paid'}
                           </button>
                         )}
                       </div>

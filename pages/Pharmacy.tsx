@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Search, Plus, Filter, AlertTriangle, Package, ShoppingCart, Eye, X, Edit2 } from 'lucide-react';
+import { Search, Plus, Filter, AlertTriangle, Package, ShoppingCart, Eye, X, Edit2, AlertCircle } from 'lucide-react';
 import { formatINR2 } from '../utils/money';
-
-import { medicines as initialMedicines, pharmacyOrders as initialOrders } from '../data/mockData';
 import { Medicine, PharmacyOrder } from '../types';
+import { useMedicines, useMedicineLowStockAlerts } from '../src/hooks/useMedicines';
+import { usePharmacyOrders, useDispensePharmacyOrder } from '../src/hooks/usePharmacy';
 
 const statusColors: Record<string, string> = {
   'In Stock': 'bg-emerald-100 text-emerald-700',
@@ -19,8 +19,11 @@ const orderStatusColors: Record<string, string> = {
 };
 
 export default function Pharmacy() {
-  const [medicines] = useState<Medicine[]>(initialMedicines);
-  const [orders, setOrders] = useState<PharmacyOrder[]>(initialOrders);
+  const { data: medicines = [], isLoading: medsLoading, error: medsError } = useMedicines();
+  const { data: orders = [], isLoading: ordersLoading, error: ordersError } = usePharmacyOrders();
+  const { data: stockAlerts = [], isLoading: alertsLoading } = useMedicineLowStockAlerts();
+  const dispenseMutation = useDispensePharmacyOrder();
+  
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [activeTab, setActiveTab] = useState<'inventory' | 'orders'>('inventory');
@@ -40,10 +43,38 @@ export default function Pharmacy() {
   );
 
   const dispenseOrder = (id: string) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'Dispensed' } : o));
+    dispenseMutation.mutate(id);
   };
 
-  const stockAlerts = medicines.filter(m => m.status === 'Low Stock' || m.status === 'Out of Stock' || m.status === 'Expired');
+  const isLoading = medsLoading || ordersLoading || alertsLoading;
+  const error = medsError || ordersError;
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-20 bg-slate-700 rounded animate-pulse" />
+          ))}
+        </div>
+        <div className="h-64 bg-slate-700 rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <div>
+            <p className="font-semibold text-red-700">Error loading pharmacy data</p>
+            <p className="text-sm text-red-600">{(error as Error).message}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-5">
@@ -231,9 +262,9 @@ export default function Pharmacy() {
                     </td>
                     <td className="px-5 py-4">
                       {order.status === 'Pending' && (
-                        <button onClick={() => dispenseOrder(order.id)}
-                          className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-semibold rounded-lg hover:bg-emerald-600 transition-colors">
-                          Dispense
+                        <button onClick={() => dispenseOrder(order.id)} disabled={dispenseMutation.isPending}
+                          className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-semibold rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          {dispenseMutation.isPending ? 'Dispensing...' : 'Dispense'}
                         </button>
                       )}
                     </td>

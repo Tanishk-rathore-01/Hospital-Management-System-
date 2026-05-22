@@ -6,11 +6,12 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import {
-  patients, appointments, bills, medicines, revenueData,
-  appointmentTrendData, todayIso
-} from '../data/mockData';
 import { formatINR, formatINR2, formatINRCompact } from '../utils/money';
+import { usePatients } from '../src/hooks/usePatients';
+import { useAppointments } from '../src/hooks/useAppointments';
+import { useBills } from '../src/hooks/useBills';
+import { useMedicines } from '../src/hooks/useMedicines';
+import { revenueData, appointmentTrendData, todayIso } from '../data/mockData';
 
 const currentRevenue = revenueData[revenueData.length - 1]?.revenue ?? 0;
 const previousRevenue = revenueData[revenueData.length - 2]?.revenue ?? currentRevenue;
@@ -108,9 +109,80 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function Dashboard() {
+  const { data: patients = [], isLoading: patientsLoading } = usePatients();
+  const { data: appointments = [], isLoading: appointmentsLoading } = useAppointments();
+  const { data: bills = [], isLoading: billsLoading } = useBills();
+  const { data: medicines = [], isLoading: medicinesLoading } = useMedicines();
+
+  const isLoading = patientsLoading || appointmentsLoading || billsLoading || medicinesLoading;
+
+  // Calculate stats from fetched data
+  const currentRevenue = revenueData[revenueData.length - 1]?.revenue ?? 0;
+  const previousRevenue = revenueData[revenueData.length - 2]?.revenue ?? currentRevenue;
+  const todayAppointments = appointments.filter((appointment) => appointment.date === todayIso);
+  const pendingBills = bills.filter((bill) => bill.status === 'Pending' || bill.status === 'Overdue' || bill.status === 'Partial');
+  const stockAlerts = medicines.filter((medicine) => medicine.status === 'Low Stock' || medicine.status === 'Out of Stock' || medicine.status === 'Expired');
+
   const collected = bills.reduce((sum, bill) => sum + bill.paid, 0);
   const outstanding = pendingBills.reduce((sum, bill) => sum + (bill.total - bill.paid), 0);
   const doctorsAvailable = 4;
+
+  const stats = [
+    {
+      label: 'OPD Visits',
+      value: patients.length * 76,
+      icon: Users,
+      change: '+14.6%',
+      positive: true,
+      sub: `${patients.filter((patient) => patient.status === 'Active').length} active records`,
+      tone: 'from-teal-400/18 to-emerald-400/10',
+    },
+    {
+      label: 'Appointments',
+      value: todayAppointments.length,
+      icon: Calendar,
+      change: '+8.2%',
+      positive: true,
+      sub: `${appointments.filter((appointment) => appointment.status === 'In Progress').length} in progress`,
+      tone: 'from-sky-400/18 to-blue-400/10',
+    },
+    {
+      label: 'IPD Occupancy',
+      value: '76%',
+      icon: Bed,
+      change: '+3.1%',
+      positive: true,
+      sub: '109 / 143 beds',
+      tone: 'from-blue-400/18 to-cyan-400/10',
+    },
+    {
+      label: 'Monthly Revenue',
+      value: formatINR(currentRevenue),
+      icon: IndianRupee,
+      change: currentRevenue >= previousRevenue ? '+5.8%' : '-3.2%',
+      positive: currentRevenue >= previousRevenue,
+      sub: `vs ${formatINR(previousRevenue)} last month`,
+      tone: 'from-emerald-400/18 to-teal-400/10',
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-48 bg-slate-700 rounded animate-pulse" />
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-slate-700 rounded animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-64 bg-slate-700 rounded animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 p-4 sm:p-6">

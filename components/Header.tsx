@@ -1,9 +1,6 @@
 import { Search, Bell, ChevronDown, Building2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { NavItem } from '../types';
-
-interface HeaderProps {
-  activeNav: NavItem;
-}
 
 const pageTitles: Record<NavItem, { title: string; subtitle: string }> = {
   landing: { title: 'Apex Health Care', subtitle: 'One calm workspace for Indian hospital teams' },
@@ -16,7 +13,20 @@ const pageTitles: Record<NavItem, { title: string; subtitle: string }> = {
   reports: { title: 'Reports & Analytics', subtitle: 'Operational insights for care and finance teams' },
 };
 
-export default function Header({ activeNav }: HeaderProps) {
+function getNavFromPath(pathname: string): NavItem {
+  if (pathname.startsWith('/patients')) return 'patients';
+  if (pathname.startsWith('/appointments')) return 'appointments';
+  if (pathname.startsWith('/medical-records')) return 'medical-records';
+  if (pathname.startsWith('/billing')) return 'billing';
+  if (pathname.startsWith('/pharmacy')) return 'pharmacy';
+  if (pathname.startsWith('/reports')) return 'reports';
+  if (pathname === '/' || pathname.startsWith('/landing')) return 'landing';
+  return 'dashboard';
+}
+
+export default function Header() {
+  const location = useLocation();
+  const activeNav = getNavFromPath(location.pathname);
   const { title, subtitle } = pageTitles[activeNav];
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });

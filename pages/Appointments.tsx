@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Plus, Search, Calendar, Clock, X, Check, Filter, Eye } from 'lucide-react';
-import { appointments as initialAppointments, doctors } from '../data/mockData';
+import { Plus, Search, Calendar, Clock, X, Check, Filter, Eye, AlertCircle } from 'lucide-react';
+import { doctors } from '../data/mockData';
 import { formatINR2 } from '../utils/money';
-
 import { Appointment } from '../types';
+import { useAppointments, useCreateAppointment, useUpdateAppointmentStatus, useDeleteAppointment } from '../src/hooks/useAppointments';
+import { usePatients } from '../src/hooks/usePatients';
 
 const statusColors: Record<string, string> = {
   'Scheduled': 'bg-blue-100 text-blue-700',
@@ -23,12 +24,17 @@ const typeColors: Record<string, string> = {
 const timeSlots = ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM'];
 
 const emptyForm = {
-  patientName: '', doctorId: 'D001', doctorName: 'Dr. Amit Sharma', department: 'Cardiology',
+  patientId: '', patientName: '', doctorId: 'D001', doctorName: 'Dr. Amit Sharma', department: 'Cardiology',
   date: '', time: '09:00 AM', type: 'Consultation' as Appointment['type'], notes: '', fee: 1200
 };
 
 export default function Appointments() {
-  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
+  const { data: appointments = [], isLoading, error } = useAppointments();
+  const { data: patients = [] } = usePatients();
+  const createMutation = useCreateAppointment();
+  const updateStatusMutation = useUpdateAppointmentStatus();
+  const deleteMutation = useDeleteAppointment();
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
@@ -46,11 +52,10 @@ export default function Appointments() {
   const handleAdd = () => { setForm(emptyForm); setShowModal(true); };
 
   const handleSubmit = () => {
-    if (!form.patientName || !form.date) return;
+    if (!form.patientId || !form.patientName || !form.date) return;
     const selectedDoctor = doctors.find(d => d.id === form.doctorId);
-    const newAppt: Appointment = {
-      id: `A${String(appointments.length + 1).padStart(3, '0')}`,
-      patientId: `P00${Math.floor(Math.random() * 8) + 1}`,
+    const newAppt: Omit<Appointment, 'id'> = {
+      patientId: form.patientId,
       patientName: form.patientName,
       doctorId: form.doctorId,
       doctorName: selectedDoctor?.name || form.doctorName,
@@ -62,17 +67,23 @@ export default function Appointments() {
       notes: form.notes,
       fee: form.fee,
     };
-    setAppointments(prev => [newAppt, ...prev]);
-    setShowModal(false);
-  };
-
-  const updateStatus = (id: string, status: Appointment['status']) => {
-    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+    createMutation.mutate(newAppt, {
+      onSuccess: () => {
+        setShowModal(false);
+        setForm(emptyForm);
+      },
+    });
   };
 
   const handleDoctorChange = (doctorId: string) => {
     const doc = doctors.find(d => d.id === doctorId);
     if (doc) setForm(prev => ({ ...prev, doctorId, doctorName: doc.name, department: doc.department }));
+  };
+
+  const handleDeleteAppointment = (id: string) => {
+    if (confirm('Delete this appointment?')) {
+      deleteMutation.mutate(id);
+    }
   };
 
   const statsData = [
@@ -82,6 +93,33 @@ export default function Appointments() {
     { label: 'Completed', count: appointments.filter(a => a.status === 'Completed').length, color: 'bg-emerald-100 text-emerald-700' },
     { label: 'Cancelled', count: appointments.filter(a => a.status === 'Cancelled').length, color: 'bg-red-100 text-red-700' },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-8 bg-slate-700 rounded w-1/3 animate-pulse" />
+        <div className="grid grid-cols-5 gap-3">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-16 bg-slate-700 rounded animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <div>
+            <p className="font-semibold text-red-700">Error loading appointments</p>
+            <p className="text-sm text-red-600">{(error as Error).message}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-5">
@@ -191,19 +229,22 @@ export default function Appointments() {
                       </button>
                       {appt.status === 'Scheduled' && (
                         <>
-                          <button onClick={() => updateStatus(appt.id, 'In Progress')} className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-500 transition-colors" title="Start">
+                          <button onClick={() => updateStatusMutation.mutate({ id: appt.id, status: 'In Progress' })} className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-500 transition-colors" title="Start">
                             <Clock className="w-4 h-4" />
                           </button>
-                          <button onClick={() => updateStatus(appt.id, 'Cancelled')} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="Cancel">
+                          <button onClick={() => updateStatusMutation.mutate({ id: appt.id, status: 'Cancelled' })} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="Cancel">
                             <X className="w-4 h-4" />
                           </button>
                         </>
                       )}
                       {appt.status === 'In Progress' && (
-                        <button onClick={() => updateStatus(appt.id, 'Completed')} className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-500 transition-colors" title="Complete">
+                        <button onClick={() => updateStatusMutation.mutate({ id: appt.id, status: 'Completed' })} className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-500 transition-colors" title="Complete">
                           <Check className="w-4 h-4" />
                         </button>
                       )}
+                      <button onClick={() => handleDeleteAppointment(appt.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors" title="Delete">
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -267,9 +308,17 @@ export default function Appointments() {
             </div>
             <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Patient Name *</label>
-                <input type="text" placeholder="Enter patient name" value={form.patientName} onChange={e => setForm(prev => ({ ...prev, patientName: e.target.value }))}
-                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/30" />
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Patient *</label>
+                <select value={form.patientId} onChange={e => {
+                  const patient = patients.find(p => p.id === e.target.value);
+                  if (patient) setForm(prev => ({ ...prev, patientId: patient.id, patientName: patient.name }));
+                }}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/30">
+                  <option value="">Select a patient...</option>
+                  {patients.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Doctor</label>
@@ -310,8 +359,8 @@ export default function Appointments() {
             </div>
             <div className="flex gap-3 px-5 pb-5">
               <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600">Cancel</button>
-              <button onClick={handleSubmit} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-500 text-white rounded-xl hover:from-violet-700 hover:to-purple-600 shadow-lg shadow-violet-500/25">
-                Schedule
+              <button onClick={handleSubmit} disabled={createMutation.isLoading} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-500 text-white rounded-xl hover:from-violet-700 hover:to-purple-600 shadow-lg shadow-violet-500/25 disabled:opacity-50">
+                {createMutation.isLoading ? 'Scheduling...' : 'Schedule'}
               </button>
             </div>
           </div>
