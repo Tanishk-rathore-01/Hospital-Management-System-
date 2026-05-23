@@ -32,7 +32,7 @@ export default function Login() {
     try {
       if (mode === 'signup') {
         await signUp(email, password, fullName);
-        setMessage('Account created. If your Supabase project requires email confirmation, confirm the email before signing in.');
+        setMessage('Account created. Please sign in with the same email and password to enter the workspace.');
         setMode('signin');
       } else {
         await signIn(email, password);

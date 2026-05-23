@@ -31,6 +31,12 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const { displayName, email, signOut } = useAuth();
   const [activePanel, setActivePanel] = useState<SidebarPanel>(null);
   const [authError, setAuthError] = useState('');
+  const [notificationsRead, setNotificationsRead] = useState(false);
+  const [workspaceSettings, setWorkspaceSettings] = useState({
+    darkComfortMode: true,
+    compactNavigation: true,
+    careAlerts: true,
+  });
 
   const handleLogout = async () => {
     setAuthError('');
@@ -110,15 +116,19 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
         <div className="px-3 py-4 border-t border-slate-700/60 space-y-1">
           {[
-            { icon: Bell, label: 'Notifications', badge: '3', panel: 'notifications' as const },
+            { icon: Bell, label: 'Notifications', badge: notificationsRead ? undefined : '3', panel: 'notifications' as const },
             { icon: Settings, label: 'Settings', panel: 'settings' as const },
             { icon: LogOut, label: 'Logout', panel: 'logout' as const },
           ].map(({ icon: Icon, label, badge, panel }) => (
             <button
               key={label}
               type="button"
-              onClick={() => setActivePanel(panel)}
+              onClick={() => {
+                setAuthError('');
+                setActivePanel((current) => (current === panel ? null : panel));
+              }}
               aria-label={label}
+              aria-expanded={activePanel === panel}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition-all group ${
                 collapsed ? 'justify-center' : ''
               }`}
@@ -203,20 +213,46 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                     <p className="mt-1 text-xs text-slate-500">{detail}</p>
                   </div>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationsRead(true);
+                    setActivePanel(null);
+                  }}
+                  className="w-full rounded-lg border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-sm font-semibold text-teal-100 hover:bg-teal-400/15"
+                >
+                  Mark all as read
+                </button>
               </div>
             )}
 
             {activePanel === 'settings' && (
               <div className="space-y-3">
-                {['Dark comfort mode', 'Compact navigation', 'Care alerts'].map((label) => (
-                  <div key={label} className="flex items-center justify-between rounded-md border border-slate-700/60 bg-slate-900/50 px-3 py-2.5">
-                    <span className="text-sm font-semibold text-slate-200">{label}</span>
-                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-1 text-xs font-semibold text-emerald-200">
-                      <CheckCircle className="h-3 w-3" />
-                      On
-                    </span>
-                  </div>
-                ))}
+                {[
+                  ['darkComfortMode', 'Dark comfort mode'],
+                  ['compactNavigation', 'Compact navigation'],
+                  ['careAlerts', 'Care alerts'],
+                ].map(([key, label]) => {
+                  const settingKey = key as keyof typeof workspaceSettings;
+                  const enabled = workspaceSettings[settingKey];
+
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setWorkspaceSettings((current) => ({ ...current, [settingKey]: !enabled }))}
+                      className="flex w-full items-center justify-between rounded-md border border-slate-700/60 bg-slate-900/50 px-3 py-2.5 text-left hover:bg-slate-800/80"
+                    >
+                      <span className="text-sm font-semibold text-slate-200">{label}</span>
+                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${
+                        enabled ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-700/60 text-slate-300'
+                      }`}>
+                        <CheckCircle className="h-3 w-3" />
+                        {enabled ? 'On' : 'Off'}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 

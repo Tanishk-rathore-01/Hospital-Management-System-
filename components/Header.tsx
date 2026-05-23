@@ -71,6 +71,12 @@ export default function Header() {
   const [activePanel, setActivePanel] = useState<HeaderPanel>(null);
   const [selectedBranch, setSelectedBranch] = useState(branches[0]);
   const [authError, setAuthError] = useState('');
+  const [notificationsRead, setNotificationsRead] = useState(false);
+  const [workspaceSettings, setWorkspaceSettings] = useState({
+    darkComfortMode: true,
+    compactTableRows: true,
+    lowStockReminders: true,
+  });
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const initials = displayName
@@ -274,14 +280,16 @@ export default function Header() {
               className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/70 bg-slate-900/60 transition-colors hover:bg-slate-800"
             >
               <Bell className="w-4 h-4 text-slate-300" aria-hidden />
-              <span className="absolute right-1 top-1 h-2 w-2 rounded-full border border-[#071214] bg-teal-400" aria-hidden />
-              <span className="sr-only">3 new notifications</span>
+              {!notificationsRead && <span className="absolute right-1 top-1 h-2 w-2 rounded-full border border-[#071214] bg-teal-400" aria-hidden />}
+              <span className="sr-only">{notificationsRead ? 'No new notifications' : '3 new notifications'}</span>
             </button>
             {activePanel === 'notifications' && (
               <div className="absolute right-0 top-11 z-50 w-80 rounded-lg border border-slate-700/70 bg-[#0b171b] p-3 shadow-2xl">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-sm font-bold text-slate-100">Notifications</p>
-                  <span className="rounded-md bg-teal-400/10 px-2 py-1 text-xs font-semibold text-teal-200">3 new</span>
+                  <span className="rounded-md bg-teal-400/10 px-2 py-1 text-xs font-semibold text-teal-200">
+                    {notificationsRead ? 'All read' : '3 new'}
+                  </span>
                 </div>
                 <div className="space-y-2">
                   {notifications.map((notification) => (
@@ -291,6 +299,16 @@ export default function Header() {
                     </div>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationsRead(true);
+                    setActivePanel(null);
+                  }}
+                  className="mt-3 w-full rounded-lg border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-sm font-semibold text-teal-100 hover:bg-teal-400/15"
+                >
+                  Mark all as read
+                </button>
               </div>
             )}
           </div>
@@ -351,15 +369,31 @@ export default function Header() {
               </button>
             </div>
             <div className="space-y-3">
-              {['Dark comfort mode', 'Compact table rows', 'Low stock reminders'].map((setting) => (
-                <div key={setting} className="flex items-center justify-between rounded-md border border-slate-700/60 bg-slate-900/50 px-3 py-2.5">
-                  <span className="text-sm font-semibold text-slate-200">{setting}</span>
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-1 text-xs font-semibold text-emerald-200">
-                    <CheckCircle className="h-3 w-3" />
-                    On
-                  </span>
-                </div>
-              ))}
+              {[
+                ['darkComfortMode', 'Dark comfort mode'],
+                ['compactTableRows', 'Compact table rows'],
+                ['lowStockReminders', 'Low stock reminders'],
+              ].map(([key, setting]) => {
+                const settingKey = key as keyof typeof workspaceSettings;
+                const enabled = workspaceSettings[settingKey];
+
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setWorkspaceSettings((current) => ({ ...current, [settingKey]: !enabled }))}
+                    className="flex w-full items-center justify-between rounded-md border border-slate-700/60 bg-slate-900/50 px-3 py-2.5 text-left hover:bg-slate-800/80"
+                  >
+                    <span className="text-sm font-semibold text-slate-200">{setting}</span>
+                    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${
+                      enabled ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-700/60 text-slate-300'
+                    }`}>
+                      <CheckCircle className="h-3 w-3" />
+                      {enabled ? 'On' : 'Off'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

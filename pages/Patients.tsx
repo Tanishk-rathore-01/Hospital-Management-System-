@@ -10,13 +10,20 @@ import { usePatients, useCreatePatient, useUpdatePatient, useDeletePatient } fro
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
 const genders = ['Male', 'Female', 'Other'] as const;
 const patientStatuses = ['Active', 'Inactive', 'Discharged'] as const;
-const indiaPhonePattern = /^\+91[\s-]?[0-9][0-9\s-]{7,16}$/;
+
+const stripIndianDialCode = (value: string) => {
+  const digits = value.replace(/\D/g, '');
+  return digits.startsWith('91') && digits.length > 10 ? digits.slice(2) : digits;
+};
+
+const isIndianPhone = (value: string) => stripIndianDialCode(value).length === 10;
+const normaliseIndianPhone = (value: string) => `+91-${stripIndianDialCode(value)}`;
 
 const patientFormSchema = z.object({
   name: z.string().trim().min(2, 'Enter the patient full name'),
   age: z.number().int('Age must be a whole number').min(0, 'Age cannot be negative').max(120, 'Age looks too high'),
   gender: z.enum(genders),
-  phone: z.string().trim().regex(indiaPhonePattern, 'Use an Indian phone number, e.g. +91-98765-00000'),
+  phone: z.string().trim().refine(isIndianPhone, 'Enter a 10-digit mobile number after +91'),
   email: z.string().trim().refine(
     (value) => value.length === 0 || z.string().email().safeParse(value).success,
     'Enter a valid email or leave it blank',
@@ -25,13 +32,13 @@ const patientFormSchema = z.object({
   bloodGroup: z.enum(bloodGroups),
   dateOfBirth: z.string().min(1, 'Select date of birth'),
   status: z.enum(patientStatuses),
-  emergencyContact: z.string().trim().regex(indiaPhonePattern, 'Use an Indian emergency contact number'),
+  emergencyContact: z.string().trim().refine(isIndianPhone, 'Enter a 10-digit emergency contact after +91'),
   insurance: z.string().trim(),
   allergies: z.array(z.string().trim().min(1)),
 });
 
 type PatientFormValues = z.infer<typeof patientFormSchema>;
-type PatientInputName = 'name' | 'age' | 'phone' | 'email' | 'dateOfBirth' | 'emergencyContact' | 'insurance';
+type PatientInputName = 'name' | 'age' | 'email' | 'dateOfBirth' | 'insurance';
 
 const patientInputFields: Array<{
   label: string;
@@ -41,10 +48,8 @@ const patientInputFields: Array<{
 }> = [
   { label: 'Full Name *', name: 'name', type: 'text', placeholder: 'Ananya Gupta' },
   { label: 'Age', name: 'age', type: 'number', placeholder: '30' },
-  { label: 'Phone *', name: 'phone', type: 'tel', placeholder: '+91-98765-00000' },
   { label: 'Email', name: 'email', type: 'email', placeholder: 'patient@email.com' },
   { label: 'Date of Birth *', name: 'dateOfBirth', type: 'date', placeholder: '' },
-  { label: 'Emergency Contact *', name: 'emergencyContact', type: 'tel', placeholder: '+91-98765-00001' },
   { label: 'Insurance Provider', name: 'insurance', type: 'text', placeholder: 'Star Health' },
 ];
 
@@ -58,13 +63,13 @@ const toPatientFormValues = (patient: Patient): PatientFormValues => ({
   name: patient.name,
   age: patient.age,
   gender: patient.gender,
-  phone: patient.phone,
+  phone: stripIndianDialCode(patient.phone),
   email: patient.email,
   address: patient.address,
   bloodGroup: patient.bloodGroup as PatientFormValues['bloodGroup'],
   dateOfBirth: patient.dateOfBirth,
   status: patient.status,
-  emergencyContact: patient.emergencyContact,
+  emergencyContact: stripIndianDialCode(patient.emergencyContact),
   insurance: patient.insurance,
   allergies: [...patient.allergies],
 });
@@ -95,6 +100,10 @@ export default function Patients() {
     mode: 'onBlur',
   });
   const formAllergies = watch('allergies') ?? [];
+  const phoneField = register('phone');
+  const emergencyContactField = register('emergencyContact');
+  const phoneValue = watch('phone') ?? '';
+  const emergencyContactValue = watch('emergencyContact') ?? '';
 
   const filtered = patients.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -119,9 +128,15 @@ export default function Patients() {
   };
 
   const submitPatient = (values: PatientFormValues) => {
+    const normalizedValues = {
+      ...values,
+      phone: normaliseIndianPhone(values.phone),
+      emergencyContact: normaliseIndianPhone(values.emergencyContact),
+    };
+
     if (editMode && viewPatient) {
       updateMutation.mutate(
-        { id: viewPatient.id, data: values },
+        { id: viewPatient.id, data: normalizedValues },
         {
           onSuccess: () => {
             setShowModal(false);
@@ -131,7 +146,7 @@ export default function Patients() {
         }
       );
     } else {
-      createMutation.mutate(values, {
+      createMutation.mutate(normalizedValues, {
         onSuccess: () => {
           setShowModal(false);
           reset(emptyPatient);
@@ -395,6 +410,52 @@ export default function Patients() {
                 </div>
               ))}
               <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone *</label>
+                <div className={`flex overflow-hidden rounded-xl border bg-slate-50 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:bg-white ${
+                  errors.phone ? 'border-rose-300' : 'border-slate-200'
+                }`}>
+                  <span className="flex items-center border-r border-slate-200 px-3 text-sm font-semibold text-slate-500">+91</span>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="98765 00000"
+                    name={phoneField.name}
+                    ref={phoneField.ref}
+                    onBlur={phoneField.onBlur}
+                    value={stripIndianDialCode(phoneValue)}
+                    onChange={(event) => {
+                      setValue('phone', stripIndianDialCode(event.target.value), { shouldDirty: true, shouldValidate: true });
+                    }}
+                    aria-invalid={Boolean(errors.phone)}
+                    className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+                {errors.phone && <p className="mt-1 text-xs font-medium text-rose-600">{errors.phone.message}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Emergency Contact *</label>
+                <div className={`flex overflow-hidden rounded-xl border bg-slate-50 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:bg-white ${
+                  errors.emergencyContact ? 'border-rose-300' : 'border-slate-200'
+                }`}>
+                  <span className="flex items-center border-r border-slate-200 px-3 text-sm font-semibold text-slate-500">+91</span>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="98765 00001"
+                    name={emergencyContactField.name}
+                    ref={emergencyContactField.ref}
+                    onBlur={emergencyContactField.onBlur}
+                    value={stripIndianDialCode(emergencyContactValue)}
+                    onChange={(event) => {
+                      setValue('emergencyContact', stripIndianDialCode(event.target.value), { shouldDirty: true, shouldValidate: true });
+                    }}
+                    aria-invalid={Boolean(errors.emergencyContact)}
+                    className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+                {errors.emergencyContact && <p className="mt-1 text-xs font-medium text-rose-600">{errors.emergencyContact.message}</p>}
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Gender</label>
                 <select
                   {...register('gender')}
@@ -420,8 +481,11 @@ export default function Patients() {
                 >
                   {patientStatuses.map(s => <option key={s}>{s}</option>)}
                 </select>
+                <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                  Active means the patient is currently registered for ongoing care; inactive is kept on file, and discharged means this visit is complete.
+                </p>
               </div>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Address *</label>
                 <input
                   type="text"
@@ -434,7 +498,7 @@ export default function Patients() {
                 />
                 {errors.address && <p className="mt-1 text-xs font-medium text-rose-600">{errors.address.message}</p>}
               </div>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Allergies</label>
                 <div className="flex gap-2 mb-2">
                   <input type="text" placeholder="Add allergy (press Enter)" value={allergyInput}

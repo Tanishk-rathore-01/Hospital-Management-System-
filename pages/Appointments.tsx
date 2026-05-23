@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { Plus, Search, Calendar, Clock, X, Check, Filter, Eye, AlertCircle, Trash2 } from 'lucide-react';
 import { doctors } from '../data/mockData';
 import { formatINR2 } from '../utils/money';
@@ -26,7 +26,7 @@ const timeSlots = ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '
 
 const emptyForm = {
   patientId: '', patientName: '', doctorId: 'D001', doctorName: 'Dr. Amit Sharma', department: 'Cardiology',
-  date: '', time: '09:00 AM', type: 'Consultation' as Appointment['type'], notes: '', fee: 1200
+  date: '', time: '09:00 AM', type: 'Consultation' as Appointment['type'], notes: '', fee: '1200'
 };
 
 export default function Appointments() {
@@ -42,6 +42,7 @@ export default function Appointments() {
   const [viewAppt, setViewAppt] = useState<Appointment | null>(null);
   const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [formError, setFormError] = useState('');
 
   const filtered = appointments.filter(a => {
     const matchSearch = a.patientName.toLowerCase().includes(search.toLowerCase()) ||
@@ -51,10 +52,37 @@ export default function Appointments() {
     return matchSearch && matchStatus;
   });
 
-  const handleAdd = () => { setForm(emptyForm); setShowModal(true); };
+  const handleAdd = () => {
+    setForm(emptyForm);
+    setFormError('');
+    setShowModal(true);
+  };
 
-  const handleSubmit = () => {
-    if (!form.patientId || !form.patientName || !form.date) return;
+  const handleSubmit = (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    setFormError('');
+
+    if (patients.length === 0) {
+      setFormError('Add at least one patient before scheduling an appointment.');
+      return;
+    }
+
+    if (!form.patientId || !form.patientName) {
+      setFormError('Select a patient for this appointment.');
+      return;
+    }
+
+    if (!form.date) {
+      setFormError('Select the appointment date.');
+      return;
+    }
+
+    const feeValue = form.fee.trim() === '' ? 0 : Number(form.fee);
+    if (!Number.isFinite(feeValue) || feeValue < 0) {
+      setFormError('Enter a valid fee amount in rupees.');
+      return;
+    }
+
     const selectedDoctor = doctors.find(d => d.id === form.doctorId);
     const newAppt: Omit<Appointment, 'id'> = {
       patientId: form.patientId,
@@ -67,12 +95,15 @@ export default function Appointments() {
       type: form.type,
       status: 'Scheduled',
       notes: form.notes,
-      fee: form.fee,
+      fee: feeValue,
     };
     createMutation.mutate(newAppt, {
       onSuccess: () => {
         setShowModal(false);
         setForm(emptyForm);
+      },
+      onError: (error) => {
+        setFormError(error instanceof Error ? error.message : 'Unable to schedule this appointment.');
       },
     });
   };
@@ -309,24 +340,32 @@ export default function Appointments() {
       {/* Add Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" noValidate>
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-800">Schedule Appointment</h3>
-              <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center"><X className="w-4 h-4 text-slate-600" /></button>
+              <button type="button" onClick={() => setShowModal(false)} className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center"><X className="w-4 h-4 text-slate-600" /></button>
             </div>
             <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Patient *</label>
                 <select value={form.patientId} onChange={e => {
                   const patient = patients.find(p => p.id === e.target.value);
-                  if (patient) setForm(prev => ({ ...prev, patientId: patient.id, patientName: patient.name }));
+                  setFormError('');
+                  if (patient) {
+                    setForm(prev => ({ ...prev, patientId: patient.id, patientName: patient.name }));
+                  } else {
+                    setForm(prev => ({ ...prev, patientId: '', patientName: '' }));
+                  }
                 }}
                   className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/30">
-                  <option value="">Select a patient...</option>
+                  <option value="">{patients.length === 0 ? 'Add a patient first...' : 'Select a patient...'}</option>
                   {patients.map(p => (
                     <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
                   ))}
                 </select>
+                {patients.length === 0 && (
+                  <p className="mt-1.5 text-xs text-amber-600">No patients found yet. Register a patient first, then come back to schedule.</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Doctor</label>
@@ -356,22 +395,33 @@ export default function Appointments() {
               </div>
               <div>
 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Fee (₹)</label>
-                <input type="number" value={form.fee} onChange={e => setForm(prev => ({ ...prev, fee: parseInt(e.target.value) || 0 }))}
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="1"
+                  value={form.fee}
+                  onChange={e => setForm(prev => ({ ...prev, fee: e.target.value }))}
                   className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/30" />
               </div>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Notes</label>
                 <textarea rows={2} placeholder="Additional notes..." value={form.notes} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
                   className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/30 resize-none" />
               </div>
+              {formError && (
+                <div className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+                  {formError}
+                </div>
+              )}
             </div>
             <div className="flex gap-3 px-5 pb-5">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600">Cancel</button>
-              <button onClick={handleSubmit} disabled={createMutation.isPending} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-500 text-white rounded-xl hover:from-violet-700 hover:to-purple-600 shadow-lg shadow-violet-500/25 disabled:opacity-50">
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600">Cancel</button>
+              <button type="submit" disabled={createMutation.isPending} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-500 text-white rounded-xl hover:from-violet-700 hover:to-purple-600 shadow-lg shadow-violet-500/25 disabled:opacity-50">
                 {createMutation.isPending ? 'Scheduling...' : 'Schedule'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
