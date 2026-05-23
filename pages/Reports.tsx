@@ -1,10 +1,15 @@
+import { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Users, Calendar, IndianRupee, Pill, Activity, Download } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar, Legend
 } from 'recharts';
-import { revenueData, departmentData, appointmentTrendData, patients, appointments, bills, medicines } from '../data/mockData';
+import { revenueData, departmentData, appointmentTrendData } from '../data/mockData';
 import { formatINR2, formatINR, formatINRCompact } from '../utils/money';
+import { patientService } from '../src/services/patientService';
+import { appointmentService } from '../src/services/appointmentService';
+import { billService } from '../src/services/billService';
+import { medicineService } from '../src/services/medicineService';
 
 
 const patientGrowthData = [
@@ -42,13 +47,66 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Reports() {
+  const [patients, setPatients] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [bills, setBills] = useState<any[]>([]);
+  const [medicines, setMedicines] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [patientsData, appointmentsData, billsData, medicinesData] = await Promise.all([
+          patientService.getAll(),
+          appointmentService.getAll(),
+          billService.getAll(),
+          medicineService.getAll(),
+        ]);
+        setPatients(patientsData);
+        setAppointments(appointmentsData);
+        setBills(billsData);
+        setMedicines(medicinesData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const totalRevenue = revenueData.reduce((s, d) => s + d.revenue, 0);
   const totalExpenses = revenueData.reduce((s, d) => s + d.expenses, 0);
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = ((netProfit / totalRevenue) * 100).toFixed(1);
 
-  const collectionRate = ((bills.filter(b => b.status === 'Paid').length / bills.length) * 100).toFixed(0);
-  const avgAppointmentFee = Math.round(appointments.reduce((s, a) => s + a.fee, 0) / appointments.length);
+  const collectionRate = bills.length > 0 ? ((bills.filter(b => b.status === 'Paid').length / bills.length) * 100).toFixed(0) : '0';
+  const avgAppointmentFee = appointments.length > 0 ? Math.round(appointments.reduce((s, a) => s + a.fee, 0) / appointments.length) : 0;
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-teal-400/20 border-t-teal-400 rounded-full animate-spin mx-auto mb-2" />
+          <p className="text-slate-600">Loading reports...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600">
+          <p className="font-semibold">Error loading reports</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   const kpiData = [
     { label: 'Total Revenue (YTD)', value: formatINR(totalRevenue), change: '+14.2%', positive: true, icon: IndianRupee, color: 'from-emerald-500 to-teal-600' },

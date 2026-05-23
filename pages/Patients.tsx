@@ -1,15 +1,73 @@
 import { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import { Search, Plus, Filter, Edit2, Eye, Trash2, Phone, AlertTriangle, X, AlertCircle } from 'lucide-react';
+import { z } from 'zod';
 import { Patient } from '../types';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { usePatients, useCreatePatient, useUpdatePatient, useDeletePatient } from '../src/hooks/usePatients';
 
-const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
+const genders = ['Male', 'Female', 'Other'] as const;
+const patientStatuses = ['Active', 'Inactive', 'Discharged'] as const;
+const indiaPhonePattern = /^\+91[\s-]?[0-9][0-9\s-]{7,16}$/;
 
-const emptyPatient: Omit<Patient, 'id' | 'registrationDate'> = {
+const patientFormSchema = z.object({
+  name: z.string().trim().min(2, 'Enter the patient full name'),
+  age: z.number().int('Age must be a whole number').min(0, 'Age cannot be negative').max(120, 'Age looks too high'),
+  gender: z.enum(genders),
+  phone: z.string().trim().regex(indiaPhonePattern, 'Use an Indian phone number, e.g. +91-98765-00000'),
+  email: z.string().trim().refine(
+    (value) => value.length === 0 || z.string().email().safeParse(value).success,
+    'Enter a valid email or leave it blank',
+  ),
+  address: z.string().trim().min(5, 'Enter a usable address'),
+  bloodGroup: z.enum(bloodGroups),
+  dateOfBirth: z.string().min(1, 'Select date of birth'),
+  status: z.enum(patientStatuses),
+  emergencyContact: z.string().trim().regex(indiaPhonePattern, 'Use an Indian emergency contact number'),
+  insurance: z.string().trim(),
+  allergies: z.array(z.string().trim().min(1)),
+});
+
+type PatientFormValues = z.infer<typeof patientFormSchema>;
+type PatientInputName = 'name' | 'age' | 'phone' | 'email' | 'dateOfBirth' | 'emergencyContact' | 'insurance';
+
+const patientInputFields: Array<{
+  label: string;
+  name: PatientInputName;
+  type: 'text' | 'number' | 'tel' | 'email' | 'date';
+  placeholder: string;
+}> = [
+  { label: 'Full Name *', name: 'name', type: 'text', placeholder: 'Ananya Gupta' },
+  { label: 'Age', name: 'age', type: 'number', placeholder: '30' },
+  { label: 'Phone *', name: 'phone', type: 'tel', placeholder: '+91-98765-00000' },
+  { label: 'Email', name: 'email', type: 'email', placeholder: 'patient@email.com' },
+  { label: 'Date of Birth *', name: 'dateOfBirth', type: 'date', placeholder: '' },
+  { label: 'Emergency Contact *', name: 'emergencyContact', type: 'tel', placeholder: '+91-98765-00001' },
+  { label: 'Insurance Provider', name: 'insurance', type: 'text', placeholder: 'Star Health' },
+];
+
+const emptyPatient: PatientFormValues = {
   name: '', age: 0, gender: 'Male', phone: '', email: '', address: '',
   bloodGroup: 'O+', dateOfBirth: '', status: 'Active', emergencyContact: '',
   insurance: '', allergies: []
 };
+
+const toPatientFormValues = (patient: Patient): PatientFormValues => ({
+  name: patient.name,
+  age: patient.age,
+  gender: patient.gender,
+  phone: patient.phone,
+  email: patient.email,
+  address: patient.address,
+  bloodGroup: patient.bloodGroup as PatientFormValues['bloodGroup'],
+  dateOfBirth: patient.dateOfBirth,
+  status: patient.status,
+  emergencyContact: patient.emergencyContact,
+  insurance: patient.insurance,
+  allergies: [...patient.allergies],
+});
 
 export default function Patients() {
   const { data: patients = [], isLoading, error } = usePatients();
@@ -22,8 +80,21 @@ export default function Patients() {
   const [showModal, setShowModal] = useState(false);
   const [viewPatient, setViewPatient] = useState<Patient | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState<Omit<Patient, 'id' | 'registrationDate'>>(emptyPatient);
   const [allergyInput, setAllergyInput] = useState('');
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const {
+    register,
+    handleSubmit: handlePatientSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<PatientFormValues>({
+    resolver: zodResolver(patientFormSchema),
+    defaultValues: emptyPatient,
+    mode: 'onBlur',
+  });
+  const formAllergies = watch('allergies') ?? [];
 
   const filtered = patients.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -34,23 +105,23 @@ export default function Patients() {
   });
 
   const handleAdd = () => {
-    setFormData(emptyPatient);
+    reset(emptyPatient);
     setEditMode(false);
+    setViewPatient(null);
     setShowModal(true);
   };
 
   const handleEdit = (p: Patient) => {
-    setFormData({ name: p.name, age: p.age, gender: p.gender, phone: p.phone, email: p.email, address: p.address, bloodGroup: p.bloodGroup, dateOfBirth: p.dateOfBirth, status: p.status, emergencyContact: p.emergencyContact, insurance: p.insurance, allergies: [...p.allergies] });
+    reset(toPatientFormValues(p));
     setEditMode(true);
     setViewPatient(p);
     setShowModal(true);
   };
 
-  const handleSubmit = () => {
-    if (!formData.name) return;
+  const submitPatient = (values: PatientFormValues) => {
     if (editMode && viewPatient) {
       updateMutation.mutate(
-        { id: viewPatient.id, data: formData },
+        { id: viewPatient.id, data: values },
         {
           onSuccess: () => {
             setShowModal(false);
@@ -60,31 +131,38 @@ export default function Patients() {
         }
       );
     } else {
-      createMutation.mutate(formData, {
+      createMutation.mutate(values, {
         onSuccess: () => {
           setShowModal(false);
-          setFormData(emptyPatient);
+          reset(emptyPatient);
           setEditMode(false);
         },
       });
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Delete this patient?')) {
-      deleteMutation.mutate(id);
-    }
+  const handleDelete = (patient: Patient) => {
+    setPatientToDelete(patient);
+  };
+
+  const confirmDeletePatient = () => {
+    if (!patientToDelete) return;
+
+    deleteMutation.mutate(patientToDelete.id, {
+      onSuccess: () => setPatientToDelete(null),
+    });
   };
 
   const addAllergy = () => {
-    if (allergyInput.trim() && !formData.allergies.includes(allergyInput.trim())) {
-      setFormData(prev => ({ ...prev, allergies: [...prev.allergies, allergyInput.trim()] }));
+    const allergy = allergyInput.trim();
+    if (allergy && !formAllergies.includes(allergy)) {
+      setValue('allergies', [...formAllergies, allergy], { shouldDirty: true, shouldValidate: true });
       setAllergyInput('');
     }
   };
 
   const removeAllergy = (a: string) => {
-    setFormData(prev => ({ ...prev, allergies: prev.allergies.filter(x => x !== a) }));
+    setValue('allergies', formAllergies.filter(x => x !== a), { shouldDirty: true, shouldValidate: true });
   };
 
   if (isLoading) {
@@ -214,7 +292,7 @@ export default function Patients() {
                     <div className="flex items-center gap-2">
                       <button onClick={() => setViewPatient(p)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors"><Eye className="w-4 h-4" /></button>
                       <button onClick={() => handleEdit(p)} className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-500 transition-colors"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(p)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -289,72 +367,89 @@ export default function Patients() {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <form
+            onSubmit={handlePatientSubmit(submitPatient)}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            noValidate
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-800">{editMode ? 'Edit Patient' : 'Register New Patient'}</h3>
-              <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center">
+              <button type="button" onClick={() => setShowModal(false)} className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center">
                 <X className="w-4 h-4 text-slate-600" />
               </button>
             </div>
             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { label: 'Full Name *', field: 'name', type: 'text', placeholder: 'Ananya Gupta' },
-                { label: 'Age', field: 'age', type: 'number', placeholder: '30' },
-                { label: 'Phone', field: 'phone', type: 'tel', placeholder: '+91-98765-00000' },
-                { label: 'Email', field: 'email', type: 'email', placeholder: 'patient@email.com' },
-                { label: 'Date of Birth', field: 'dateOfBirth', type: 'date', placeholder: '' },
-                { label: 'Emergency Contact', field: 'emergencyContact', type: 'tel', placeholder: '+91-98765-00001' },
-                { label: 'Insurance Provider', field: 'insurance', type: 'text', placeholder: 'Star Health' },
-              ].map(({ label, field, type, placeholder }) => (
-                <div key={field}>
+              {patientInputFields.map(({ label, name, type, placeholder }) => (
+                <div key={name}>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">{label}</label>
                   <input
                     type={type}
                     placeholder={placeholder}
-                    value={(formData as any)[field]}
-                    onChange={e => setFormData(prev => ({ ...prev, [field]: type === 'number' ? parseInt(e.target.value) || 0 : e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white"
+                    {...register(name, type === 'number' ? { valueAsNumber: true } : undefined)}
+                    aria-invalid={Boolean(errors[name])}
+                    className={`w-full px-3 py-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white ${
+                      errors[name] ? 'border-rose-300' : 'border-slate-200'
+                    }`}
                   />
+                  {errors[name] && <p className="mt-1 text-xs font-medium text-rose-600">{errors[name]?.message}</p>}
                 </div>
               ))}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Gender</label>
-                <select value={formData.gender} onChange={e => setFormData(prev => ({ ...prev, gender: e.target.value as any }))}
-                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30">
-                  {['Male', 'Female', 'Other'].map(g => <option key={g}>{g}</option>)}
+                <select
+                  {...register('gender')}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                >
+                  {genders.map(g => <option key={g}>{g}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Blood Group</label>
-                <select value={formData.bloodGroup} onChange={e => setFormData(prev => ({ ...prev, bloodGroup: e.target.value }))}
-                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+                <select
+                  {...register('bloodGroup')}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                >
                   {bloodGroups.map(b => <option key={b}>{b}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Status</label>
-                <select value={formData.status} onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
-                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30">
-                  {['Active', 'Inactive', 'Discharged'].map(s => <option key={s}>{s}</option>)}
+                <select
+                  {...register('status')}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                >
+                  {patientStatuses.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Address</label>
-                <input type="text" placeholder="12 M.G. Road, Bengaluru, Karnataka 560001" value={formData.address}
-                  onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Address *</label>
+                <input
+                  type="text"
+                  placeholder="12 M.G. Road, Bengaluru, Karnataka 560001"
+                  {...register('address')}
+                  aria-invalid={Boolean(errors.address)}
+                  className={`w-full px-3 py-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+                    errors.address ? 'border-rose-300' : 'border-slate-200'
+                  }`}
+                />
+                {errors.address && <p className="mt-1 text-xs font-medium text-rose-600">{errors.address.message}</p>}
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Allergies</label>
                 <div className="flex gap-2 mb-2">
                   <input type="text" placeholder="Add allergy (press Enter)" value={allergyInput}
                     onChange={e => setAllergyInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addAllergy()}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addAllergy();
+                      }
+                    }}
                     className="flex-1 px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
                   <button type="button" onClick={addAllergy} className="px-3 py-2 bg-blue-500 text-white rounded-xl text-sm hover:bg-blue-600">Add</button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {formData.allergies.map(a => (
+                  {formAllergies.map(a => (
                     <span key={a} className="flex items-center gap-1 text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded-full">
                       {a} <button type="button" onClick={() => removeAllergy(a)}><X className="w-3 h-3" /></button>
                     </span>
@@ -363,16 +458,27 @@ export default function Patients() {
               </div>
             </div>
             <div className="flex gap-3 px-6 pb-6">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors">
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors">
                 Cancel
               </button>
-              <button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:from-blue-700 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
+              <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:from-blue-700 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
                 {createMutation.isPending || updateMutation.isPending ? (editMode ? 'Saving...' : 'Registering...') : (editMode ? 'Save Changes' : 'Register Patient')}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={Boolean(patientToDelete)}
+        title="Delete patient record?"
+        description="This removes the patient from the current hospital workspace. Please confirm only if this record is no longer required."
+        itemLabel={patientToDelete ? `${patientToDelete.name} (${patientToDelete.id})` : undefined}
+        confirmLabel="Delete patient"
+        isDeleting={deleteMutation.isPending}
+        onCancel={() => setPatientToDelete(null)}
+        onConfirm={confirmDeletePatient}
+      />
     </div>
   );
 }

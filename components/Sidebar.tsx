@@ -7,6 +7,7 @@ import {
 import { NavItem } from '../types';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useAuth } from '../src/auth/AuthContext';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -27,7 +28,20 @@ type SidebarPanel = 'notifications' | 'settings' | 'logout' | null;
 
 export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const navigate = useNavigate();
+  const { displayName, email, signOut } = useAuth();
   const [activePanel, setActivePanel] = useState<SidebarPanel>(null);
+  const [authError, setAuthError] = useState('');
+
+  const handleLogout = async () => {
+    setAuthError('');
+    try {
+      await signOut();
+      navigate('/login', { replace: true });
+      setActivePanel(null);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Unable to log out');
+    }
+  };
 
   return (
     <>
@@ -128,8 +142,8 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-white truncate">Tanishk Rathore</p>
-                <p className="text-xs text-slate-400 truncate">admin@apexhealth.in</p>
+                <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+                <p className="text-xs text-slate-400 truncate">{email}</p>
               </div>
             )}
           </div>
@@ -164,7 +178,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 <p className="mt-1 text-sm text-slate-500">
                   {activePanel === 'notifications' && 'Important hospital desk updates.'}
                   {activePanel === 'settings' && 'Current workspace preferences.'}
-                  {activePanel === 'logout' && 'Return to the public landing screen.'}
+                  {activePanel === 'logout' && 'Sign out of the protected workspace.'}
                 </p>
               </div>
               <button
@@ -209,8 +223,11 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
             {activePanel === 'logout' && (
               <>
                 <p className="text-sm leading-6 text-slate-400">
-                  This will close the current admin view and open the landing screen. Your frontend mock data stays in this browser session.
+                  This will sign you out of Supabase and close the protected admin workspace.
                 </p>
+                {authError && (
+                  <p className="mt-3 rounded-md border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-sm text-rose-200">{authError}</p>
+                )}
                 <div className="mt-5 flex gap-3">
                   <button
                     type="button"
@@ -221,10 +238,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      navigate('/');
-                      setActivePanel(null);
-                    }}
+                    onClick={handleLogout}
                     className="flex-1 rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-[#041012] hover:bg-teal-400"
                   >
                     Logout

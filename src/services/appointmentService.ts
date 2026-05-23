@@ -1,46 +1,95 @@
 import { Appointment, AppointmentStatus } from '../types';
-import { appointments as mockAppointments } from '../../data/mockData';
+import { supabase } from '../lib/supabase';
+import { getNextPrefixedId, throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
 
-let appointments = [...mockAppointments];
+const mapDbToAppointment = (row: any): Appointment => ({
+  id: String(row.id),
+  patientId: String(row.patient_id),
+  patientName: row.patient_name || '',
+  doctorId: String(row.doctor_id),
+  doctorName: row.doctor_name || '',
+  department: row.department || '',
+  date: row.date || '',
+  time: row.time || '',
+  type: row.type || 'Consultation',
+  status: row.status || 'Scheduled',
+  notes: row.notes || '',
+  fee: toNumber(row.fee),
+});
+
+const mapAppointmentToDb = (appointment: Partial<Appointment>) => {
+  const row: Record<string, unknown> = {};
+  if (appointment.id !== undefined) row.id = appointment.id;
+  if (appointment.patientId !== undefined) row.patient_id = appointment.patientId;
+  if (appointment.patientName !== undefined) row.patient_name = appointment.patientName;
+  if (appointment.doctorId !== undefined) row.doctor_id = appointment.doctorId;
+  if (appointment.doctorName !== undefined) row.doctor_name = appointment.doctorName;
+  if (appointment.department !== undefined) row.department = appointment.department;
+  if (appointment.date !== undefined) row.date = appointment.date;
+  if (appointment.time !== undefined) row.time = appointment.time;
+  if (appointment.type !== undefined) row.type = appointment.type;
+  if (appointment.status !== undefined) row.status = appointment.status;
+  if (appointment.notes !== undefined) row.notes = appointment.notes;
+  if (appointment.fee !== undefined) row.fee = appointment.fee;
+  return row;
+};
 
 export const appointmentService = {
   async getAll(): Promise<Appointment[]> {
-    return Promise.resolve([...appointments]);
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*')
+      .order('date', { ascending: false });
+
+    throwIfSupabaseError(error);
+    return (data || []).map(mapDbToAppointment);
   },
 
   async getById(id: string): Promise<Appointment | null> {
-    const all = await this.getAll();
-    return all.find(a => a.id === id) || null;
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    throwIfSupabaseError(error);
+    return data ? mapDbToAppointment(data) : null;
   },
 
   async create(data: Omit<Appointment, 'id'>): Promise<Appointment> {
-    const newAppointment: Appointment = {
-      ...data,
-      id: `A${String(appointments.length + 1).padStart(3, '0')}`,
-    };
-    appointments = [newAppointment, ...appointments];
-    return Promise.resolve(newAppointment);
+    const id = await getNextPrefixedId('appointments', 'A');
+    const { data: created, error } = await supabase
+      .from('appointments')
+      .insert([mapAppointmentToDb({ ...data, id })])
+      .select()
+      .single();
+
+    throwIfSupabaseError(error);
+    return mapDbToAppointment(created);
   },
 
   async updateStatus(id: string, status: AppointmentStatus): Promise<Appointment> {
-    const updated = appointments.find(a => a.id === id);
-    if (!updated) throw new Error('Appointment not found');
-    const appointment = { ...updated, status };
-    appointments = appointments.map(a => a.id === id ? appointment : a);
-    return Promise.resolve(appointment);
+    return this.update(id, { status });
   },
 
   async update(id: string, data: Partial<Appointment>): Promise<Appointment> {
-    const all = await this.getAll();
-    const appointment = all.find(a => a.id === id);
-    if (!appointment) throw new Error('Appointment not found');
-    const updated = { ...appointment, ...data };
-    appointments = appointments.map(a => a.id === id ? updated : a);
-    return Promise.resolve(updated);
+    const { data: updated, error } = await supabase
+      .from('appointments')
+      .update(mapAppointmentToDb(data))
+      .eq('id', id)
+      .select()
+      .single();
+
+    throwIfSupabaseError(error);
+    return mapDbToAppointment(updated);
   },
 
   async delete(id: string): Promise<void> {
-    appointments = appointments.filter(a => a.id !== id);
-    return Promise.resolve();
+    const { error } = await supabase
+      .from('appointments')
+      .delete()
+      .eq('id', id);
+
+    throwIfSupabaseError(error);
   },
 };

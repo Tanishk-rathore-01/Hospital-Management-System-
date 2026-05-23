@@ -2,11 +2,13 @@ import { Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import AppErrorBoundary from './components/AppErrorBoundary';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { RequireAuth } from './src/auth/AuthContext';
 
 // Lazy load pages for code splitting
 const Landing = lazy(() => import('./pages/Landing'));
+const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Patients = lazy(() => import('./pages/Patients'));
 const Appointments = lazy(() => import('./pages/Appointments'));
@@ -30,6 +32,34 @@ function PageLoader() {
 }
 
 export default function App() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/landing" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route
+          element={
+            <RequireAuth>
+              <AppShell />
+            </RequireAuth>
+          }
+        >
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/patients" element={<Patients />} />
+          <Route path="/appointments" element={<Appointments />} />
+          <Route path="/medical-records" element={<MedicalRecords />} />
+          <Route path="/billing" element={<Billing />} />
+          <Route path="/pharmacy" element={<Pharmacy />} />
+          <Route path="/reports" element={<Reports />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
+function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
 
@@ -45,18 +75,7 @@ export default function App() {
         <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto pb-24 lg:pb-0">
           <AppErrorBoundary key={location.pathname}>
             <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/landing" element={<Landing />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/patients" element={<Patients />} />
-                <Route path="/appointments" element={<Appointments />} />
-                <Route path="/medical-records" element={<MedicalRecords />} />
-                <Route path="/billing" element={<Billing />} />
-                <Route path="/pharmacy" element={<Pharmacy />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+              <Outlet />
             </Suspense>
           </AppErrorBoundary>
         </main>

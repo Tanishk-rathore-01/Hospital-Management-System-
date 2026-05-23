@@ -12,7 +12,13 @@ import {
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { NavItem } from '../types';
-import { appointments, bills, doctors, medicalRecords, medicines, patients } from '../data/mockData';
+import { doctors } from '../data/mockData';
+import { useAppointments } from '../src/hooks/useAppointments';
+import { useBills } from '../src/hooks/useBills';
+import { useMedicalRecords } from '../src/hooks/useMedicalRecords';
+import { useMedicines } from '../src/hooks/useMedicines';
+import { usePatients } from '../src/hooks/usePatients';
+import { useAuth } from '../src/auth/AuthContext';
 
 const pageTitles: Record<NavItem, { title: string; subtitle: string }> = {
   landing: { title: 'Apex Health Care', subtitle: 'One calm workspace for Indian hospital teams' },
@@ -37,45 +43,6 @@ const notifications = [
   { title: 'Billing follow-up pending', detail: 'One overdue invoice requires attention' },
 ];
 
-const searchIndex = [
-  ...patients.map((patient) => ({
-    title: patient.name,
-    meta: `${patient.id} | ${patient.phone} | ${patient.insurance}`,
-    type: 'Patient',
-    path: '/patients',
-  })),
-  ...doctors.map((doctor) => ({
-    title: doctor.name,
-    meta: `${doctor.specialization} | ${doctor.status}`,
-    type: 'Doctor',
-    path: '/appointments',
-  })),
-  ...appointments.map((appointment) => ({
-    title: appointment.patientName,
-    meta: `${appointment.id} | ${appointment.doctorName} | ${appointment.status}`,
-    type: 'Appointment',
-    path: '/appointments',
-  })),
-  ...medicalRecords.map((record) => ({
-    title: record.patientName,
-    meta: `${record.id} | ${record.diagnosis}`,
-    type: 'Record',
-    path: '/medical-records',
-  })),
-  ...bills.map((bill) => ({
-    title: bill.patientName,
-    meta: `${bill.id} | ${bill.status} | ${bill.paymentMethod}`,
-    type: 'Bill',
-    path: '/billing',
-  })),
-  ...medicines.map((medicine) => ({
-    title: medicine.name,
-    meta: `${medicine.genericName} | ${medicine.status}`,
-    type: 'Medicine',
-    path: '/pharmacy',
-  })),
-];
-
 type HeaderPanel = 'notifications' | 'location' | 'user' | 'settings' | 'logout' | null;
 
 function getNavFromPath(pathname: string): NavItem {
@@ -92,13 +59,65 @@ function getNavFromPath(pathname: string): NavItem {
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { displayName, email, signOut } = useAuth();
+  const { data: patients = [] } = usePatients();
+  const { data: appointments = [] } = useAppointments();
+  const { data: bills = [] } = useBills();
+  const { data: medicalRecords = [] } = useMedicalRecords();
+  const { data: medicines = [] } = useMedicines();
   const activeNav = getNavFromPath(location.pathname);
   const { title, subtitle } = pageTitles[activeNav];
   const [query, setQuery] = useState('');
   const [activePanel, setActivePanel] = useState<HeaderPanel>(null);
   const [selectedBranch, setSelectedBranch] = useState(branches[0]);
+  const [authError, setAuthError] = useState('');
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'AD';
+
+  const searchIndex = useMemo(() => [
+    ...patients.map((patient) => ({
+      title: patient.name,
+      meta: `${patient.id} | ${patient.phone} | ${patient.insurance}`,
+      type: 'Patient',
+      path: '/patients',
+    })),
+    ...doctors.map((doctor) => ({
+      title: doctor.name,
+      meta: `${doctor.specialization} | ${doctor.status}`,
+      type: 'Doctor',
+      path: '/appointments',
+    })),
+    ...appointments.map((appointment) => ({
+      title: appointment.patientName,
+      meta: `${appointment.id} | ${appointment.doctorName} | ${appointment.status}`,
+      type: 'Appointment',
+      path: '/appointments',
+    })),
+    ...medicalRecords.map((record) => ({
+      title: record.patientName,
+      meta: `${record.id} | ${record.diagnosis}`,
+      type: 'Record',
+      path: '/medical-records',
+    })),
+    ...bills.map((bill) => ({
+      title: bill.patientName,
+      meta: `${bill.id} | ${bill.status} | ${bill.paymentMethod}`,
+      type: 'Bill',
+      path: '/billing',
+    })),
+    ...medicines.map((medicine) => ({
+      title: medicine.name,
+      meta: `${medicine.genericName} | ${medicine.status}`,
+      type: 'Medicine',
+      path: '/pharmacy',
+    })),
+  ], [appointments, bills, medicalRecords, medicines, patients]);
 
   const searchResults = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -124,7 +143,19 @@ export default function Header() {
   };
 
   const openLogout = () => {
+    setAuthError('');
     setActivePanel('logout');
+  };
+
+  const handleLogout = async () => {
+    setAuthError('');
+    try {
+      await signOut();
+      navigate('/login', { replace: true });
+      setActivePanel(null);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Unable to log out');
+    }
   };
 
   return (
@@ -274,16 +305,16 @@ export default function Header() {
               className="flex items-center gap-2 rounded-lg border border-slate-700/70 bg-slate-900/60 py-1.5 pl-1.5 pr-2 transition-colors hover:bg-slate-800 sm:pr-3"
             >
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-teal-500/20 text-xs font-bold text-teal-200">
-                TR
+                {initials}
               </div>
-              <span className="hidden text-sm font-semibold text-slate-200 md:block">Tanishk</span>
+              <span className="hidden max-w-24 truncate text-sm font-semibold text-slate-200 md:block">{displayName}</span>
               <ChevronDown className="hidden w-3 h-3 text-slate-400 sm:block" />
             </button>
             {activePanel === 'user' && (
               <div id="user-menu" className="absolute right-0 top-11 z-50 w-64 rounded-lg border border-slate-700/70 bg-[#0b171b] p-2 shadow-2xl">
                 <div className="border-b border-slate-700/60 px-3 py-3">
-                  <p className="text-sm font-bold text-slate-100">Tanishk Rathore</p>
-                  <p className="text-xs text-slate-500">admin@apexhealth.in</p>
+                  <p className="text-sm font-bold text-slate-100">{displayName}</p>
+                  <p className="text-xs text-slate-500">{email}</p>
                 </div>
                 <button
                   type="button"
@@ -339,18 +370,18 @@ export default function Header() {
           <div className="w-full max-w-sm rounded-lg border border-slate-700/70 bg-[#0b171b] p-5 shadow-2xl">
             <p className="text-lg font-bold text-slate-100">Logout from this desk?</p>
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              This demo will take you back to the public landing screen. Local mock data stays available in this session.
+              This will sign you out of Supabase and close the protected admin workspace.
             </p>
+            {authError && (
+              <p className="mt-3 rounded-md border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-sm text-rose-200">{authError}</p>
+            )}
             <div className="mt-5 flex gap-3">
               <button type="button" onClick={() => setActivePanel(null)} className="flex-1 rounded-lg border border-slate-700/70 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800">
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  navigate('/');
-                  setActivePanel(null);
-                }}
+                onClick={handleLogout}
                 className="flex-1 rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-[#041012] hover:bg-teal-400"
               >
                 Logout

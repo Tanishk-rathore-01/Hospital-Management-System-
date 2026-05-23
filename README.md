@@ -1,226 +1,154 @@
-# Hospital Management System
+# Apex Health Care
 
-A modern, responsive Hospital Management System dashboard built with **React, TypeScript, Vite, and Tailwind CSS**.  
-The project provides a clean hospital admin interface for managing patients, appointments, medical records, billing, pharmacy inventory, and analytical reports.
+Apex Health Care is a full-stack hospital management dashboard built with React, TypeScript, Vite, Supabase, and Tailwind CSS. The product is designed for Indian hospital operations: dark clinical UI, INR-first billing, Indian patient data patterns, protected admin access, and connected modules for day-to-day care coordination.
 
-> This project is designed as a frontend-focused hospital management dashboard using structured mock data and reusable React components.
+## What This Project Does
 
----
+- Protects operational routes with Supabase Authentication.
+- Uses Supabase tables for patients, appointments, bills, medicines, pharmacy orders, and medical records.
+- Supports patient registration/edit/delete with React Hook Form and Zod validation.
+- Tracks appointment queues, appointment status changes, billing collection, pharmacy stock, pharmacy dispensing, and medical record views.
+- Formats money in INR and uses India-oriented labels, phone formats, addresses, and hospital workflow language.
+- Includes focused unit tests for money formatting and service logic.
+- Deploys as a Vite SPA on Vercel.
 
-## Preview
+## Tech Stack
 
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+- TanStack Query
+- Supabase Auth and Database
+- React Hook Form
+- Zod
+- Recharts
+- Vitest
 
-```md
+## Project Structure
 
-Features
-Dashboard Overview
-Hospital performance summary
-OPD visits, appointment count, IPD occupancy, and revenue insights
-Revenue vs expenses visualization
-Patient flow chart
-Appointment trend analysis
-Billing and pharmacy snapshot
-Patient Management
-Add, view, edit, and delete patient records
-Search patients by name, ID, or email
-Filter patients by status
-Store patient details such as:
-Age
-Gender
-Blood group
-Contact details
-Emergency contact
-Insurance provider
-Allergies
-Appointment Management
-Schedule new appointments
-View doctor availability
-Search and filter appointments
-Appointment status workflow:
-Scheduled
-In Progress
-Completed
-Cancelled
-Appointment fee tracking
-Medical Records
-View patient medical history
-Store diagnosis, symptoms, treatment plans, and doctor notes
-View prescriptions
-View lab results
-Track patient vitals such as:
-Blood pressure
-Heart rate
-Temperature
-Weight
-Height
-Oxygen saturation
-Billing Management
-View hospital invoices
-Track paid, pending, partial, and overdue bills
-Display subtotal, tax, discount, insurance coverage, and balance due
-Mark bills as paid
-Indian Rupee currency formatting
-Pharmacy Management
-Manage medicine inventory
-Track medicine stock, expiry, category, manufacturer, and location
-Low stock, out-of-stock, and expired medicine alerts
-Pharmacy order management
-Dispense pending pharmacy orders
-Reports & Analytics
-Revenue and expense analysis
-Net profit and profit margin tracking
-Patient growth charts
-Department-wise patient distribution
-Weekly appointment analysis
-Patient satisfaction visualization
-Monthly performance summary
-Tech Stack
-Technology	Purpose
-React	Frontend UI
-TypeScript	Type-safe development
-Vite	Fast development and build tool
-Tailwind CSS	Styling and responsive UI
-React Router DOM	Client-side routing
-TanStack React Query	Data fetching and server-state style management
-Recharts	Charts and analytics
-Zustand	Lightweight state management
-Lucide React	Icons
-Date-fns	Date utilities
-Project Structure
-Hospital-Management-System-
-├── components/
-│   ├── AppErrorBoundary.tsx
-│   ├── Header.tsx
-│   └── Sidebar.tsx
-│
-├── data/
-│   └── mockData.ts
-│
-├── pages/
-│   ├── Appointments.tsx
-│   ├── Billing.tsx
-│   ├── Dashboard.tsx
-│   ├── Landing.tsx
-│   ├── MedicalRecords.tsx
-│   ├── Patients.tsx
-│   ├── Pharmacy.tsx
-│   └── Reports.tsx
-│
-├── public/
-│
-├── src/
-│   └── hooks/
-│
-├── types/
-│
-├── utils/
-│   ├── cn.ts
-│   └── money.ts
-│
-├── App.tsx
-├── index.html
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
-Getting Started
+```text
+components/          Shared app shell, header/sidebar, modals
+data/                Static reference data such as doctors and chart samples
+pages/               Route-level screens
+src/auth/            Supabase auth provider and route protection
+src/hooks/           TanStack Query hooks
+src/lib/             Supabase and query client setup
+src/services/        Supabase-backed data services
+types/               Shared TypeScript entity types
+utils/               Formatting and utility helpers
+database_schema.sql  Supabase schema for this project
+vercel.json          SPA rewrite config for Vercel
+```
 
-Follow these steps to run the project locally.
+## Supabase Setup
 
-Prerequisites
+1. Create a Supabase project.
+2. Open the Supabase SQL editor.
+3. Run `database_schema.sql`.
+4. In Authentication settings, either confirm the admin email after sign-up or disable email confirmation for local demo use.
+5. Add the environment variables below.
 
-Make sure you have installed:
+The schema uses app-friendly text ids such as `P001`, `A001`, `B001`, `M001`, `PO001`, and `MR001`. If an older prototype database already has UUID ids, use a fresh Supabase project or migrate those id columns before running the current schema.
 
-Node.js
-npm
+## Environment Variables
 
-Check installation:
+Create `.env.local` for local development:
 
-node -v
-npm -v
-Installation
+```bash
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_APP_NAME=Apex Health Care
+VITE_ENVIRONMENT=development
+```
 
-Clone the repository:
+Never commit `.env`, `.env.local`, or production secrets.
 
-git clone https://github.com/Tanishk-rathore-01/Hospital-Management-System-.git
-
-Move into the project folder:
-
-cd Hospital-Management-System-
+## Local Development
 
 Install dependencies:
 
+```bash
 npm install
+```
 
 Start the development server:
 
+```bash
 npm run dev
+```
 
-Open the local development URL shown in your terminal.
+Run type checks:
 
-Available Scripts
-npm run dev
+```bash
+npm exec tsc -- --noEmit
+```
 
-Runs the app in development mode.
+Run tests:
 
+```bash
+npm test
+```
+
+Create a production build:
+
+```bash
 npm run build
+```
 
-Builds the app for production.
+## Authentication
 
-npm run preview
+The dashboard routes are protected. Unauthenticated users are redirected to `/login`.
 
-Previews the production build locally.
+The login page supports:
 
-Current Project Scope
+- Supabase email/password sign in
+- Admin account sign up
+- Real Supabase sign out from the header/sidebar
+- Header/sidebar user details from `supabase.auth.getUser()`
 
-This project currently focuses on the frontend interface and dashboard experience of a hospital management system.
+Default local demo credentials shown in the UI are:
 
-It includes:
+```text
+admin@apexhealth.in
+password
+```
 
-Frontend routing
-Responsive dashboard UI
-Patient, appointment, billing, pharmacy, and report modules
-Mock hospital data
-Charts and analytics
-UI state handling
+Those credentials only work after the account exists in your Supabase project and the email is confirmed if confirmation is enabled.
 
-It does not currently include:
+## Deployment On Vercel
 
-Real backend API
-Database integration
-Authentication
-Role-based access control
-Real-time hospital operations
-Production-level security handling
-Future Improvements
+1. Push the repository to GitHub.
+2. Import the GitHub repository into Vercel.
+3. Use the Vite framework preset.
+4. Configure:
+   - Install command: `npm install` or `npm ci`
+   - Build command: `npm run build`
+   - Output directory: `dist`
+5. Add these Vercel environment variables:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_APP_NAME`
+   - `VITE_ENVIRONMENT`
 
-Planned improvements can include:
+`vercel.json` rewrites all routes to `index.html`, so direct visits to `/dashboard`, `/patients`, and other SPA routes work correctly.
 
-Backend integration with Node.js, Express, or Next.js API routes
-Database support using MongoDB, PostgreSQL, or Firebase
-Authentication and authorization
-Admin, doctor, receptionist, pharmacist, and accountant roles
-Real patient data storage
-Appointment reminders
-PDF invoice generation
-Prescription download feature
-Advanced search and filters
-Dark mode
-Unit and integration testing
-Deployment on Vercel or Netlify
-What I Learned
+## Current Limits
 
-Through this project, I practiced:
+- Doctors are still static reference data in the frontend, while the schema seeds matching doctor ids for relational records.
+- Fine-grained hospital roles are not implemented yet.
+- Clinical audit logs, server-side authorization, and compliance workflows are outside the current scope.
+- Email confirmation behavior depends on the Supabase project settings.
 
-Building a multi-page React application
-Structuring reusable components
-Managing frontend state
-Using TypeScript for safer code
-Creating dashboards with charts
-Designing responsive admin panels
-Handling mock data in a real-world project structure
-Building healthcare-related UI workflows
-Author
+## Verification Status
 
-Tanishk Rathore
+The current codebase is expected to pass:
 
-GitHub: Tanishk-rathore-01
+```bash
+npm exec tsc -- --noEmit
+npm test
+npm run build
+```
+
+Browser verification includes route protection and login/sign-up flow. Full authenticated module testing requires a confirmed Supabase user and the latest schema applied to the target Supabase project.

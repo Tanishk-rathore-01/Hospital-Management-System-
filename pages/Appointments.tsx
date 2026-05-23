@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Search, Calendar, Clock, X, Check, Filter, Eye, AlertCircle } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, X, Check, Filter, Eye, AlertCircle, Trash2 } from 'lucide-react';
 import { doctors } from '../data/mockData';
 import { formatINR2 } from '../utils/money';
 import { Appointment } from '../types';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { useAppointments, useCreateAppointment, useUpdateAppointmentStatus, useDeleteAppointment } from '../src/hooks/useAppointments';
 import { usePatients } from '../src/hooks/usePatients';
 
@@ -39,6 +40,7 @@ export default function Appointments() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
   const [viewAppt, setViewAppt] = useState<Appointment | null>(null);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
   const [form, setForm] = useState(emptyForm);
 
   const filtered = appointments.filter(a => {
@@ -80,10 +82,16 @@ export default function Appointments() {
     if (doc) setForm(prev => ({ ...prev, doctorId, doctorName: doc.name, department: doc.department }));
   };
 
-  const handleDeleteAppointment = (id: string) => {
-    if (confirm('Delete this appointment?')) {
-      deleteMutation.mutate(id);
-    }
+  const handleDeleteAppointment = (appointment: Appointment) => {
+    setAppointmentToDelete(appointment);
+  };
+
+  const confirmDeleteAppointment = () => {
+    if (!appointmentToDelete) return;
+
+    deleteMutation.mutate(appointmentToDelete.id, {
+      onSuccess: () => setAppointmentToDelete(null),
+    });
   };
 
   const statsData = [
@@ -242,8 +250,8 @@ export default function Appointments() {
                           <Check className="w-4 h-4" />
                         </button>
                       )}
-                      <button onClick={() => handleDeleteAppointment(appt.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors" title="Delete">
-                        <X className="w-4 h-4" />
+                      <button onClick={() => handleDeleteAppointment(appt)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors" title="Delete">
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -366,6 +374,21 @@ export default function Appointments() {
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={Boolean(appointmentToDelete)}
+        title="Delete appointment?"
+        description="This removes the appointment from the queue and schedule. Existing patient records will not be deleted."
+        itemLabel={
+          appointmentToDelete
+            ? `${appointmentToDelete.patientName} with ${appointmentToDelete.doctorName} (${appointmentToDelete.date}, ${appointmentToDelete.time})`
+            : undefined
+        }
+        confirmLabel="Delete appointment"
+        isDeleting={deleteMutation.isPending}
+        onCancel={() => setAppointmentToDelete(null)}
+        onConfirm={confirmDeleteAppointment}
+      />
     </div>
   );
 }
