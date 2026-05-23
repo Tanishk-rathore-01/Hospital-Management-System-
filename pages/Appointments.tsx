@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
-import { Plus, Search, Calendar, Clock, X, Check, Filter, Eye, AlertCircle, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, X, Check, Filter, Eye, AlertCircle, Trash2, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { doctors } from '../data/mockData';
 import { formatINR2 } from '../utils/money';
 import { Appointment } from '../types';
@@ -366,6 +367,18 @@ export default function Appointments() {
                 {patients.length === 0 && (
                   <p className="mt-1.5 text-xs text-amber-600">No patients found yet. Register a patient first, then come back to schedule.</p>
                 )}
+                {patients.length > 0 && (
+                  <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                    Only registered patients appear here because appointments are linked to patient records.
+                  </p>
+                )}
+                <Link
+                  to="/patients"
+                  onClick={() => setShowModal(false)}
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-700"
+                >
+                  Register another patient <ArrowRight className="h-3 w-3" />
+                </Link>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Doctor</label>
