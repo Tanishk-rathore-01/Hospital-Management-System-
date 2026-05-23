@@ -354,18 +354,36 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {todayAppointments.slice(0, 5).map((appointment) => (
-              <div key={appointment.id} className="flex items-center gap-3 rounded-lg border border-slate-700/60 bg-[#071214]/50 p-3">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-teal-400/12">
-                  <span className="text-xs font-bold text-teal-200">{appointment.patientName.split(' ').map((name) => name[0]).join('')}</span>
+            {todayAppointments.length > 0 ? (
+              todayAppointments.slice(0, 5).map((appointment) => (
+                <div key={appointment.id} className="flex items-center gap-3 rounded-lg border border-slate-700/60 bg-[#071214]/50 p-3">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-teal-400/12">
+                    <span className="text-xs font-bold text-teal-200">{appointment.patientName.split(' ').map((name) => name[0]).join('')}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-100">{appointment.patientName}</p>
+                    <p className="truncate text-xs text-slate-500">{appointment.doctorName} | {appointment.time}</p>
+                  </div>
+                  <StatusBadge status={appointment.status} />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-slate-100">{appointment.patientName}</p>
-                  <p className="truncate text-xs text-slate-500">{appointment.doctorName} | {appointment.time}</p>
+              ))
+            ) : (
+              <div className="flex min-h-52 flex-col items-center justify-center rounded-lg border border-dashed border-slate-700/70 bg-[#071214]/45 px-5 py-8 text-center">
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-teal-400/10 text-teal-200">
+                  <Calendar className="h-5 w-5" />
                 </div>
-                <StatusBadge status={appointment.status} />
+                <p className="text-sm font-semibold text-slate-100">No appointments scheduled for today.</p>
+                <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">
+                  Appointments appear here only when their date matches today's hospital queue.
+                </p>
+                <Link
+                  to="/appointments"
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg border border-teal-400/30 bg-teal-400/10 px-3 py-2 text-xs font-semibold text-teal-100 hover:bg-teal-400/15"
+                >
+                  Schedule appointment <ArrowRight className="h-3 w-3" />
+                </Link>
               </div>
-            ))}
+            )}
           </div>
         </section>
 
