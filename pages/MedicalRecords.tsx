@@ -1,13 +1,37 @@
 import { useState } from 'react';
 import { Search, Eye, Plus, FileText, X, Activity, Thermometer, Heart, Droplets, AlertCircle } from 'lucide-react';
 import { MedicalRecord } from '../types';
-import { useMedicalRecords } from '../src/hooks/useMedicalRecords';
+import { doctors, todayIso } from '../data/mockData';
+import { useMedicalRecords, useCreateMedicalRecord } from '../src/hooks/useMedicalRecords';
+import { usePatients } from '../src/hooks/usePatients';
+
+const emptyRecordForm = {
+  patientId: '',
+  doctorId: 'D001',
+  date: todayIso,
+  diagnosis: '',
+  symptoms: '',
+  treatment: '',
+  notes: '',
+  followUpDate: '',
+  bloodPressure: '',
+  heartRate: '',
+  temperature: '',
+  weight: '',
+  height: '',
+  oxygenSaturation: '',
+};
 
 export default function MedicalRecords() {
   const { data: records = [], isLoading, error } = useMedicalRecords();
+  const { data: patients = [] } = usePatients();
+  const createRecordMutation = useCreateMedicalRecord();
   const [search, setSearch] = useState('');
   const [viewRecord, setViewRecord] = useState<MedicalRecord | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'prescriptions' | 'labs' | 'vitals'>('overview');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [recordForm, setRecordForm] = useState(emptyRecordForm);
+  const [formError, setFormError] = useState('');
 
   const filtered = records.filter(r =>
     r.patientName.toLowerCase().includes(search.toLowerCase()) ||
@@ -18,6 +42,61 @@ export default function MedicalRecords() {
   const openRecord = (r: MedicalRecord) => {
     setViewRecord(r);
     setActiveTab('overview');
+  };
+
+  const openCreateModal = () => {
+    setRecordForm(emptyRecordForm);
+    setFormError('');
+    setShowCreateModal(true);
+  };
+
+  const createRecord = () => {
+    setFormError('');
+    const selectedPatient = patients.find((patient) => patient.id === recordForm.patientId);
+    const selectedDoctor = doctors.find((doctor) => doctor.id === recordForm.doctorId);
+
+    if (!selectedPatient) {
+      setFormError('Select a registered patient before creating a medical record.');
+      return;
+    }
+
+    if (!recordForm.diagnosis.trim() || !recordForm.treatment.trim()) {
+      setFormError('Diagnosis and treatment plan are required.');
+      return;
+    }
+
+    const newRecord: Omit<MedicalRecord, 'id'> = {
+      patientId: selectedPatient.id,
+      patientName: selectedPatient.name,
+      doctorId: selectedDoctor?.id || recordForm.doctorId,
+      doctorName: selectedDoctor?.name || 'Doctor',
+      date: recordForm.date || todayIso,
+      diagnosis: recordForm.diagnosis.trim(),
+      symptoms: recordForm.symptoms.split(',').map((symptom) => symptom.trim()).filter(Boolean),
+      treatment: recordForm.treatment.trim(),
+      prescriptions: [],
+      labResults: [],
+      notes: recordForm.notes.trim(),
+      followUpDate: recordForm.followUpDate,
+      vitals: {
+        bloodPressure: recordForm.bloodPressure.trim(),
+        heartRate: Number(recordForm.heartRate || 0),
+        temperature: Number(recordForm.temperature || 0),
+        weight: Number(recordForm.weight || 0),
+        height: Number(recordForm.height || 0),
+        oxygenSaturation: Number(recordForm.oxygenSaturation || 0),
+      },
+    };
+
+    createRecordMutation.mutate(newRecord, {
+      onSuccess: () => {
+        setShowCreateModal(false);
+        setRecordForm(emptyRecordForm);
+      },
+      onError: (err) => {
+        setFormError(err instanceof Error ? err.message : 'Unable to create medical record.');
+      },
+    });
   };
 
   if (isLoading) {
@@ -56,7 +135,11 @@ export default function MedicalRecords() {
           <input type="text" placeholder="Search records, diagnosis..." value={search} onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30" />
         </div>
-        <button className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-teal-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:from-cyan-700 hover:to-teal-600 transition-all shadow-lg shadow-cyan-500/25">
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-teal-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:from-cyan-700 hover:to-teal-600 transition-all shadow-lg shadow-cyan-500/25"
+        >
           <Plus className="w-4 h-4" /> New Record
         </button>
       </div>
@@ -130,6 +213,91 @@ export default function MedicalRecords() {
         <div className="text-center py-16 text-slate-400">
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No records found</p>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800">Create Medical Record</h3>
+              <button type="button" onClick={() => setShowCreateModal(false)} className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                <X className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Patient *</label>
+                <select value={recordForm.patientId} onChange={(e) => setRecordForm((prev) => ({ ...prev, patientId: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30">
+                  <option value="">{patients.length === 0 ? 'Register a patient first' : 'Select patient'}</option>
+                  {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.name} ({patient.id})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Doctor</label>
+                <select value={recordForm.doctorId} onChange={(e) => setRecordForm((prev) => ({ ...prev, doctorId: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30">
+                  {doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Visit Date</label>
+                <input type="date" value={recordForm.date} onChange={(e) => setRecordForm((prev) => ({ ...prev, date: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Follow-up Date</label>
+                <input type="date" value={recordForm.followUpDate} onChange={(e) => setRecordForm((prev) => ({ ...prev, followUpDate: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Diagnosis *</label>
+                <input value={recordForm.diagnosis} onChange={(e) => setRecordForm((prev) => ({ ...prev, diagnosis: e.target.value }))}
+                  placeholder="Acute upper respiratory infection"
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Symptoms</label>
+                <input value={recordForm.symptoms} onChange={(e) => setRecordForm((prev) => ({ ...prev, symptoms: e.target.value }))}
+                  placeholder="Fever, cough, fatigue"
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Treatment Plan *</label>
+                <textarea rows={3} value={recordForm.treatment} onChange={(e) => setRecordForm((prev) => ({ ...prev, treatment: e.target.value }))}
+                  placeholder="Medication, observation, follow-up advice..."
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30 resize-none" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Notes</label>
+                <textarea rows={2} value={recordForm.notes} onChange={(e) => setRecordForm((prev) => ({ ...prev, notes: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30 resize-none" />
+              </div>
+              {[
+                ['bloodPressure', 'Blood Pressure', '120/80'],
+                ['heartRate', 'Heart Rate', '82'],
+                ['temperature', 'Temperature (°C)', '37'],
+                ['weight', 'Weight (kg)', '65'],
+                ['height', 'Height (cm)', '170'],
+                ['oxygenSaturation', 'O₂ Saturation (%)', '98'],
+              ].map(([key, label, placeholder]) => (
+                <div key={key}>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">{label}</label>
+                  <input value={recordForm[key as keyof typeof recordForm]} onChange={(e) => setRecordForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30" />
+                </div>
+              ))}
+              {formError && <div className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{formError}</div>}
+            </div>
+            <div className="flex gap-3 px-5 pb-5">
+              <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600">Cancel</button>
+              <button type="button" onClick={createRecord} disabled={createRecordMutation.isPending} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-cyan-600 to-teal-500 text-white rounded-xl hover:from-cyan-700 hover:to-teal-600 disabled:opacity-50">
+                {createRecordMutation.isPending ? 'Creating...' : 'Create Record'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

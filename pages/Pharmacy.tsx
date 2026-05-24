@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Search, Plus, Filter, AlertTriangle, Package, ShoppingCart, Eye, X, Edit2, AlertCircle } from 'lucide-react';
 import { formatINR2 } from '../utils/money';
-import { Medicine } from '../types';
-import { useMedicines, useMedicineLowStockAlerts } from '../src/hooks/useMedicines';
-import { usePharmacyOrders, useDispensePharmacyOrder } from '../src/hooks/usePharmacy';
+import { Medicine, PharmacyOrder } from '../types';
+import { doctors, todayIso } from '../data/mockData';
+import { useMedicines, useMedicineLowStockAlerts, useCreateMedicine } from '../src/hooks/useMedicines';
+import { usePharmacyOrders, useCreatePharmacyOrder, useDispensePharmacyOrder } from '../src/hooks/usePharmacy';
+import { usePatients } from '../src/hooks/usePatients';
 
 const statusColors: Record<string, string> = {
   'In Stock': 'bg-emerald-100 text-emerald-700',
@@ -18,16 +20,45 @@ const orderStatusColors: Record<string, string> = {
   'Cancelled': 'bg-red-100 text-red-700',
 };
 
+const emptyMedicineForm = {
+  name: '',
+  genericName: '',
+  category: '',
+  manufacturer: '',
+  stock: '0',
+  minStock: '10',
+  unit: 'Tablets',
+  price: '0',
+  expiryDate: '',
+  batchNumber: '',
+  location: '',
+};
+
+const emptyOrderForm = {
+  patientId: '',
+  doctorId: 'D001',
+  date: todayIso,
+  medicineId: '',
+  quantity: '1',
+};
+
 export default function Pharmacy() {
   const { data: medicines = [], isLoading: medsLoading, error: medsError } = useMedicines();
   const { data: orders = [], isLoading: ordersLoading, error: ordersError } = usePharmacyOrders();
+  const { data: patients = [] } = usePatients();
   const { data: stockAlerts = [], isLoading: alertsLoading } = useMedicineLowStockAlerts();
+  const createMedicineMutation = useCreateMedicine();
+  const createOrderMutation = useCreatePharmacyOrder();
   const dispenseMutation = useDispensePharmacyOrder();
   
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [activeTab, setActiveTab] = useState<'inventory' | 'orders'>('inventory');
   const [viewMed, setViewMed] = useState<Medicine | null>(null);
+  const [activeModal, setActiveModal] = useState<'medicine' | 'order' | null>(null);
+  const [medicineForm, setMedicineForm] = useState(emptyMedicineForm);
+  const [orderForm, setOrderForm] = useState(emptyOrderForm);
+  const [formError, setFormError] = useState('');
 
   const filteredMeds = medicines.filter(m => {
     const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -44,6 +75,98 @@ export default function Pharmacy() {
 
   const dispenseOrder = (id: string) => {
     dispenseMutation.mutate(id);
+  };
+
+  const openCreateModal = () => {
+    setFormError('');
+    if (activeTab === 'inventory') {
+      setMedicineForm(emptyMedicineForm);
+      setActiveModal('medicine');
+    } else {
+      setOrderForm({ ...emptyOrderForm, medicineId: medicines[0]?.id || '' });
+      setActiveModal('order');
+    }
+  };
+
+  const createMedicine = () => {
+    setFormError('');
+    const stock = Number(medicineForm.stock || 0);
+    const minStock = Number(medicineForm.minStock || 0);
+    const price = Number(medicineForm.price || 0);
+
+    if (!medicineForm.name.trim() || !medicineForm.genericName.trim() || !medicineForm.expiryDate) {
+      setFormError('Medicine name, generic name, and expiry date are required.');
+      return;
+    }
+
+    createMedicineMutation.mutate({
+      name: medicineForm.name.trim(),
+      genericName: medicineForm.genericName.trim(),
+      category: medicineForm.category.trim() || 'General',
+      manufacturer: medicineForm.manufacturer.trim() || 'Not specified',
+      stock,
+      minStock,
+      unit: medicineForm.unit.trim() || 'Units',
+      price,
+      expiryDate: medicineForm.expiryDate,
+      batchNumber: medicineForm.batchNumber.trim() || 'NA',
+      location: medicineForm.location.trim() || 'Main pharmacy',
+      status: 'In Stock',
+    }, {
+      onSuccess: () => {
+        setActiveModal(null);
+        setMedicineForm(emptyMedicineForm);
+      },
+      onError: (err) => {
+        setFormError(err instanceof Error ? err.message : 'Unable to add medicine.');
+      },
+    });
+  };
+
+  const createOrder = () => {
+    setFormError('');
+    const selectedPatient = patients.find((patient) => patient.id === orderForm.patientId);
+    const selectedDoctor = doctors.find((doctor) => doctor.id === orderForm.doctorId);
+    const selectedMedicine = medicines.find((medicine) => medicine.id === orderForm.medicineId);
+    const quantity = Number(orderForm.quantity || 0);
+
+    if (!selectedPatient) {
+      setFormError('Select a registered patient before creating a pharmacy order.');
+      return;
+    }
+
+    if (!selectedMedicine || quantity <= 0) {
+      setFormError('Select a medicine and enter a valid quantity.');
+      return;
+    }
+
+    const itemTotal = selectedMedicine.price * quantity;
+    const newOrder: Omit<PharmacyOrder, 'id'> = {
+      patientId: selectedPatient.id,
+      patientName: selectedPatient.name,
+      doctorId: selectedDoctor?.id || orderForm.doctorId,
+      doctorName: selectedDoctor?.name || 'Doctor',
+      date: orderForm.date || todayIso,
+      medicines: [{
+        medicineId: selectedMedicine.id,
+        medicineName: selectedMedicine.name,
+        quantity,
+        price: selectedMedicine.price,
+        total: itemTotal,
+      }],
+      total: itemTotal,
+      status: 'Pending',
+    };
+
+    createOrderMutation.mutate(newOrder, {
+      onSuccess: () => {
+        setActiveModal(null);
+        setOrderForm(emptyOrderForm);
+      },
+      onError: (err) => {
+        setFormError(err instanceof Error ? err.message : 'Unable to create pharmacy order.');
+      },
+    });
   };
 
   const isLoading = medsLoading || ordersLoading || alertsLoading;
@@ -143,7 +266,11 @@ export default function Pharmacy() {
               <Filter className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
           )}
-          <button className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:from-rose-600 hover:to-pink-600 transition-all shadow-lg shadow-rose-500/25 whitespace-nowrap">
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:from-rose-600 hover:to-pink-600 transition-all shadow-lg shadow-rose-500/25 whitespace-nowrap"
+          >
             <Plus className="w-4 h-4" /> {activeTab === 'inventory' ? 'Add Medicine' : 'New Order'}
           </button>
         </div>
@@ -272,6 +399,108 @@ export default function Pharmacy() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'medicine' && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800">Add Medicine</h3>
+              <button type="button" onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                <X className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                ['name', 'Medicine Name *', 'Paracetamol 500mg'],
+                ['genericName', 'Generic Name *', 'Acetaminophen'],
+                ['category', 'Category', 'Analgesic'],
+                ['manufacturer', 'Manufacturer', 'Cipla'],
+                ['stock', 'Stock', '100'],
+                ['minStock', 'Minimum Stock', '20'],
+                ['unit', 'Unit', 'Tablets'],
+                ['price', 'Unit Price (₹)', '5'],
+                ['expiryDate', 'Expiry Date *', ''],
+                ['batchNumber', 'Batch Number', 'BT2026001'],
+                ['location', 'Location', 'Shelf A-1'],
+              ].map(([key, label, placeholder]) => (
+                <div key={key}>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">{label}</label>
+                  <input
+                    type={key === 'expiryDate' ? 'date' : ['stock', 'minStock', 'price'].includes(key) ? 'number' : 'text'}
+                    min={['stock', 'minStock', 'price'].includes(key) ? '0' : undefined}
+                    value={medicineForm[key as keyof typeof medicineForm]}
+                    placeholder={placeholder}
+                    onChange={(e) => setMedicineForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+                  />
+                </div>
+              ))}
+              {formError && <div className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{formError}</div>}
+            </div>
+            <div className="flex gap-3 px-5 pb-5">
+              <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600">Cancel</button>
+              <button type="button" onClick={createMedicine} disabled={createMedicineMutation.isPending} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 disabled:opacity-50">
+                {createMedicineMutation.isPending ? 'Adding...' : 'Add Medicine'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'order' && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800">Create Pharmacy Order</h3>
+              <button type="button" onClick={() => setActiveModal(null)} className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                <X className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Patient *</label>
+                <select value={orderForm.patientId} onChange={(e) => setOrderForm((prev) => ({ ...prev, patientId: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30">
+                  <option value="">{patients.length === 0 ? 'Register a patient first' : 'Select patient'}</option>
+                  {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.name} ({patient.id})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Doctor</label>
+                <select value={orderForm.doctorId} onChange={(e) => setOrderForm((prev) => ({ ...prev, doctorId: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30">
+                  {doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Date</label>
+                <input type="date" value={orderForm.date} onChange={(e) => setOrderForm((prev) => ({ ...prev, date: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Medicine *</label>
+                <select value={orderForm.medicineId} onChange={(e) => setOrderForm((prev) => ({ ...prev, medicineId: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30">
+                  <option value="">{medicines.length === 0 ? 'Add medicine first' : 'Select medicine'}</option>
+                  {medicines.map((medicine) => <option key={medicine.id} value={medicine.id}>{medicine.name} - {formatINR2(medicine.price)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Quantity</label>
+                <input type="number" min="1" value={orderForm.quantity} onChange={(e) => setOrderForm((prev) => ({ ...prev, quantity: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30" />
+              </div>
+              {formError && <div className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{formError}</div>}
+            </div>
+            <div className="flex gap-3 px-5 pb-5">
+              <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600">Cancel</button>
+              <button type="button" onClick={createOrder} disabled={createOrderMutation.isPending} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl hover:from-rose-600 hover:to-pink-600 disabled:opacity-50">
+                {createOrderMutation.isPending ? 'Creating...' : 'Create Order'}
+              </button>
+            </div>
           </div>
         </div>
       )}

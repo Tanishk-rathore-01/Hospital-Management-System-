@@ -2,7 +2,29 @@ import { useState } from 'react';
 import { Search, Eye, Plus, Download, X, IndianRupee, CreditCard, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { formatINR2, formatINR } from '../utils/money';
 import { Bill } from '../types';
-import { useBills, useMarkBillPaid } from '../src/hooks/useBills';
+import { todayIso } from '../data/mockData';
+import { useBills, useCreateBill, useMarkBillPaid } from '../src/hooks/useBills';
+import { usePatients } from '../src/hooks/usePatients';
+
+const addDaysIso = (date: string, days: number) => {
+  const nextDate = new Date(`${date}T00:00:00`);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate.toISOString().slice(0, 10);
+};
+
+const emptyInvoiceForm = {
+  patientId: '',
+  date: todayIso,
+  dueDate: addDaysIso(todayIso, 15),
+  description: 'Consultation',
+  category: 'Consultation' as Bill['items'][number]['category'],
+  quantity: '1',
+  unitPrice: '1200',
+  discount: '0',
+  paid: '0',
+  paymentMethod: 'UPI',
+  insuranceCoverage: '0',
+};
 
 const statusIcons = {
   'Paid': CheckCircle,
@@ -20,10 +42,15 @@ const statusColors: Record<string, string> = {
 
 export default function Billing() {
   const { data: bills = [], isLoading, error } = useBills();
+  const { data: patients = [] } = usePatients();
+  const createBillMutation = useCreateBill();
   const markPaidMutation = useMarkBillPaid();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [viewBill, setViewBill] = useState<Bill | null>(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState(emptyInvoiceForm);
+  const [invoiceError, setInvoiceError] = useState('');
 
   const filtered = bills.filter(b => {
     const matchSearch = b.patientName.toLowerCase().includes(search.toLowerCase()) || b.id.toLowerCase().includes(search.toLowerCase());
@@ -37,6 +64,69 @@ export default function Billing() {
 
   const markPaid = (id: string) => {
     markPaidMutation.mutate(id);
+  };
+
+  const openInvoiceModal = () => {
+    setInvoiceForm(emptyInvoiceForm);
+    setInvoiceError('');
+    setShowInvoiceModal(true);
+  };
+
+  const createInvoice = () => {
+    setInvoiceError('');
+    const selectedPatient = patients.find((patient) => patient.id === invoiceForm.patientId);
+    const quantity = Number(invoiceForm.quantity || 0);
+    const unitPrice = Number(invoiceForm.unitPrice || 0);
+    const discount = Number(invoiceForm.discount || 0);
+    const paid = Number(invoiceForm.paid || 0);
+    const insuranceCoverage = Number(invoiceForm.insuranceCoverage || 0);
+
+    if (!selectedPatient) {
+      setInvoiceError('Select a registered patient before creating an invoice.');
+      return;
+    }
+
+    if (!invoiceForm.description.trim() || quantity <= 0 || unitPrice < 0) {
+      setInvoiceError('Enter a valid item description, quantity, and amount.');
+      return;
+    }
+
+    const itemTotal = quantity * unitPrice;
+    const tax = Math.round(itemTotal * 0.18);
+    const total = Math.max(0, itemTotal + tax - discount);
+    const status: Bill['status'] =
+      paid >= total ? 'Paid' : paid > 0 ? 'Partial' : invoiceForm.dueDate < todayIso ? 'Overdue' : 'Pending';
+
+    createBillMutation.mutate({
+      patientId: selectedPatient.id,
+      patientName: selectedPatient.name,
+      date: invoiceForm.date || todayIso,
+      dueDate: invoiceForm.dueDate || addDaysIso(todayIso, 15),
+      items: [{
+        description: invoiceForm.description.trim(),
+        category: invoiceForm.category,
+        quantity,
+        unitPrice,
+        total: itemTotal,
+      }],
+      subtotal: itemTotal,
+      tax,
+      discount,
+      total,
+      paid: Math.min(paid, total),
+      status,
+      paymentMethod: invoiceForm.paymentMethod,
+      insurance: selectedPatient.insurance,
+      insuranceCoverage,
+    }, {
+      onSuccess: () => {
+        setShowInvoiceModal(false);
+        setInvoiceForm(emptyInvoiceForm);
+      },
+      onError: (err) => {
+        setInvoiceError(err instanceof Error ? err.message : 'Unable to create invoice.');
+      },
+    });
   };
 
   if (isLoading) {
@@ -108,7 +198,11 @@ export default function Billing() {
             ))}
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-500/25">
+        <button
+          type="button"
+          onClick={openInvoiceModal}
+          className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-500/25"
+        >
           <Plus className="w-4 h-4" /> New Invoice
         </button>
       </div>
@@ -192,6 +286,78 @@ export default function Billing() {
           )}
         </div>
       </div>
+
+      {showInvoiceModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800">Create Invoice</h3>
+              <button type="button" onClick={() => setShowInvoiceModal(false)} className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                <X className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Patient *</label>
+                <select value={invoiceForm.patientId} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, patientId: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+                  <option value="">{patients.length === 0 ? 'Register a patient first' : 'Select patient'}</option>
+                  {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.name} ({patient.id})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Bill Date</label>
+                <input type="date" value={invoiceForm.date} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, date: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Due Date</label>
+                <input type="date" value={invoiceForm.dueDate} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, dueDate: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Item Description *</label>
+                <input value={invoiceForm.description} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, description: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Category</label>
+                <select value={invoiceForm.category} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, category: e.target.value as Bill['items'][number]['category'] }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+                  {['Consultation', 'Lab Test', 'Medication', 'Surgery', 'Room', 'Other'].map((category) => <option key={category}>{category}</option>)}
+                </select>
+              </div>
+              {[
+                ['quantity', 'Quantity'],
+                ['unitPrice', 'Amount (₹)'],
+                ['discount', 'Discount (₹)'],
+                ['paid', 'Paid Now (₹)'],
+                ['insuranceCoverage', 'Insurance Coverage (₹)'],
+              ].map(([key, label]) => (
+                <div key={key}>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">{label}</label>
+                  <input type="number" min="0" value={invoiceForm[key as keyof typeof invoiceForm]} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
+                </div>
+              ))}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Payment Method</label>
+                <select value={invoiceForm.paymentMethod} onChange={(e) => setInvoiceForm((prev) => ({ ...prev, paymentMethod: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+                  {['UPI', 'Cash', 'Card', 'Insurance', 'Bank Transfer'].map((method) => <option key={method}>{method}</option>)}
+                </select>
+              </div>
+              {invoiceError && <div className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{invoiceError}</div>}
+            </div>
+            <div className="flex gap-3 px-5 pb-5">
+              <button type="button" onClick={() => setShowInvoiceModal(false)} className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600">Cancel</button>
+              <button type="button" onClick={createInvoice} disabled={createBillMutation.isPending} className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:opacity-50">
+                {createBillMutation.isPending ? 'Creating...' : 'Create Invoice'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bill Detail Modal */}
       {viewBill && (
