@@ -4,7 +4,9 @@ Apex Health Care is a dark-theme hospital management system built for Indian hos
 
 Live production: https://hospital-management-system-inky-kappa.vercel.app
 
-![Apex Health Care dashboard](docs/assets/apex-dashboard.png)
+<p align="center">
+  <img src="docs/assets/apex-dashboard.png" alt="Apex Health Care dashboard showing the dark hospital operations workspace" width="100%" />
+</p>
 
 ## Project Description
 
