@@ -1,6 +1,6 @@
 import { PharmacyOrder } from '../types';
 import { supabase } from '../lib/supabase';
-import { getNextPrefixedId, throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
+import { throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
 
 const mapDbToPharmacyOrder = (row: any): PharmacyOrder => ({
   id: String(row.id),
@@ -73,10 +73,9 @@ export const pharmacyService = {
   },
 
   async create(data: Omit<PharmacyOrder, 'id'>): Promise<PharmacyOrder> {
-    const id = await getNextPrefixedId('pharmacy_orders', 'PO');
     const { data: created, error } = await supabase
       .from('pharmacy_orders')
-      .insert([mapPharmacyOrderToDb({ ...data, id })])
+      .insert([mapPharmacyOrderToDb(data)])
       .select()
       .single();
 

@@ -1,6 +1,6 @@
 import { Medicine, MedicineStatus } from '../types';
 import { supabase } from '../lib/supabase';
-import { getNextPrefixedId, throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
+import { throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
 
 function determineMedicineStatus(medicine: Pick<Medicine, 'expiryDate' | 'stock' | 'minStock'>): MedicineStatus {
   const today = new Date();
@@ -90,8 +90,7 @@ export const medicineService = {
   },
 
   async create(data: Omit<Medicine, 'id'>): Promise<Medicine> {
-    const id = await getNextPrefixedId('medicines', 'M');
-    const enriched = enrichMedicine({ ...data, id });
+    const enriched = enrichMedicine(data as Medicine);
     const { data: created, error } = await supabase
       .from('medicines')
       .insert([mapMedicineToDb(enriched)])

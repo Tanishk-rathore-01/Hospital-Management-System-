@@ -69,16 +69,25 @@ The project uses Supabase tables for:
 - `pharmacy_orders`
 - `medical_records`
 - `doctors`
+- `user_roles` (for role-based access control)
 
 The schema uses readable application IDs such as `P001`, `A001`, `B001`, `M001`, `PO001`, and `MR001`.
+
+### Security Features
+
+- **Hierarchical Role-Based Access Control (RBAC)**: 7 roles with different permission levels (owner > admin > doctor > nurse > receptionist > pharmacist > billing_staff)
+- **Row Level Security (RLS)**: Database-level policies ensuring users can only access data appropriate to their role
+- **Atomic ID Generation**: Postgres sequences for safe concurrent ID generation
+- **User Role Management**: Automatic role fetching and enforcement through the application
 
 To set up the database:
 
 1. Create a Supabase project.
 2. Open the Supabase SQL Editor.
 3. Run `database_schema.sql`.
-4. Confirm your admin user or disable email confirmation for demo use.
-5. Add the Supabase environment variables locally and in Vercel.
+4. Create an admin user in Supabase Auth.
+5. Assign the admin user the 'owner' role in the `user_roles` table.
+6. Add the Supabase environment variables locally and in Vercel.
 
 ## Environment Variables
 

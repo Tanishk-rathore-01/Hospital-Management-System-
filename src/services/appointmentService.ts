@@ -1,6 +1,6 @@
 import { Appointment, AppointmentStatus } from '../types';
 import { supabase } from '../lib/supabase';
-import { getNextPrefixedId, throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
+import { throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
 
 const mapDbToAppointment = (row: any): Appointment => ({
   id: String(row.id),
@@ -57,10 +57,9 @@ export const appointmentService = {
   },
 
   async create(data: Omit<Appointment, 'id'>): Promise<Appointment> {
-    const id = await getNextPrefixedId('appointments', 'A');
     const { data: created, error } = await supabase
       .from('appointments')
-      .insert([mapAppointmentToDb({ ...data, id })])
+      .insert([mapAppointmentToDb(data)])
       .select()
       .single();
 

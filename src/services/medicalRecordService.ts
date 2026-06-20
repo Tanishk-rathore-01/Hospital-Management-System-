@@ -1,6 +1,6 @@
 import { MedicalRecord } from '../types';
 import { supabase } from '../lib/supabase';
-import { getNextPrefixedId, throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
+import { throwIfSupabaseError } from './supabaseServiceHelpers';
 
 const mapDbToMedicalRecord = (row: any): MedicalRecord => ({
   id: String(row.id),
@@ -16,13 +16,13 @@ const mapDbToMedicalRecord = (row: any): MedicalRecord => ({
   labResults: row.lab_results || [],
   notes: row.notes || '',
   followUpDate: row.follow_up_date || '',
-  vitals: {
-    bloodPressure: row.blood_pressure || '',
-    heartRate: toNumber(row.heart_rate),
-    temperature: toNumber(row.temperature),
-    weight: toNumber(row.weight),
-    height: toNumber(row.height),
-    oxygenSaturation: toNumber(row.oxygen_saturation),
+  vitals: row.vitals || {
+    bloodPressure: '',
+    heartRate: 0,
+    temperature: 0,
+    weight: 0,
+    height: 0,
+    oxygenSaturation: 0,
   },
 });
 
@@ -41,14 +41,7 @@ const mapMedicalRecordToDb = (record: Partial<MedicalRecord>) => {
   if (record.labResults !== undefined) row.lab_results = record.labResults;
   if (record.notes !== undefined) row.notes = record.notes;
   if (record.followUpDate !== undefined) row.follow_up_date = record.followUpDate;
-  if (record.vitals !== undefined) {
-    row.blood_pressure = record.vitals.bloodPressure;
-    row.heart_rate = record.vitals.heartRate;
-    row.temperature = record.vitals.temperature;
-    row.weight = record.vitals.weight;
-    row.height = record.vitals.height;
-    row.oxygen_saturation = record.vitals.oxygenSaturation;
-  }
+  if (record.vitals !== undefined) row.vitals = record.vitals;
   return row;
 };
 
@@ -97,10 +90,9 @@ export const medicalRecordService = {
   },
 
   async create(data: Omit<MedicalRecord, 'id'>): Promise<MedicalRecord> {
-    const id = await getNextPrefixedId('medical_records', 'MR');
     const { data: created, error } = await supabase
       .from('medical_records')
-      .insert([mapMedicalRecordToDb({ ...data, id })])
+      .insert([mapMedicalRecordToDb(data)])
       .select()
       .single();
 

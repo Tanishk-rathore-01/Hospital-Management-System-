@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { Navigate, useLocation } from 'react-router-dom';
 import { queryClient } from '../lib/queryClient';
 import { supabase } from '../lib/supabase';
+import { getUserRole, type UserRole } from '../services/supabaseServiceHelpers';
 
 type AuthContextValue = {
   user: User | null;
@@ -10,6 +11,7 @@ type AuthContextValue = {
   loading: boolean;
   displayName: string;
   email: string;
+  role: UserRole | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,15 +35,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: userData } = await supabase.auth.getUser();
         if (!active) return;
         setUser(userData.user ?? data.session.user);
+        // Fetch user role
+        const userRole = await getUserRole();
+        if (!active) return;
+        setRole(userRole);
       } else {
         setUser(null);
+        setRole(null);
       }
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
+      if (nextSession?.user) {
+        const userRole = await getUserRole();
+        setRole(userRole);
+      } else {
+        setRole(null);
+      }
       setLoading(false);
     });
 
@@ -62,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       displayName,
       email: user?.email || '',
+      role,
       async signIn(email: string, password: string) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw new Error(error.message);
@@ -86,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw new Error(error.message);
       },
     };
-  }, [loading, session, user]);
+  }, [loading, session, user, role]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -243,8 +243,11 @@ export default function Dashboard() {
         <section className="rounded-lg border border-slate-700/70 bg-[#101d21] p-5 shadow-sm xl:col-span-2">
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
-              <h3 className="font-bold text-slate-100">Revenue vs Expenses</h3>
-              <p className="text-xs text-slate-500">INR performance across the last seven months</p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-100">Revenue vs Expenses</h3>
+                <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-xs font-semibold text-amber-200">Demo Data</span>
+              </div>
+              <p className="text-xs text-slate-500">INR performance across the last seven months (sample data for demonstration)</p>
             </div>
             <span className="rounded-md border border-teal-400/20 bg-teal-400/10 px-3 py-1 text-xs font-semibold text-teal-200">2026</span>
           </div>
@@ -303,8 +306,11 @@ export default function Dashboard() {
         <section className="rounded-lg border border-slate-700/70 bg-[#101d21] p-5 shadow-sm xl:col-span-2">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h3 className="font-bold text-slate-100">Appointment Trends</h3>
-              <p className="text-xs text-slate-500">Completed and cancelled consultations this week</p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-100">Appointment Trends</h3>
+                <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-xs font-semibold text-amber-200">Demo Data</span>
+              </div>
+              <p className="text-xs text-slate-500">Completed and cancelled consultations this week (sample data for demonstration)</p>
             </div>
             <span className="hidden rounded-md border border-slate-700/70 px-3 py-1 text-xs text-slate-400 sm:inline-flex">
               {doctorsAvailable} doctors available

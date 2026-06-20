@@ -1,6 +1,6 @@
 import { Bill, BillStatus } from '../types';
 import { supabase } from '../lib/supabase';
-import { getNextPrefixedId, throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
+import { throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
 
 const mapDbToBill = (row: any): Bill => ({
   id: String(row.id),
@@ -80,10 +80,9 @@ export const billService = {
   },
 
   async create(data: Omit<Bill, 'id'>): Promise<Bill> {
-    const id = await getNextPrefixedId('bills', 'B');
     const { data: created, error } = await supabase
       .from('bills')
-      .insert([mapBillToDb({ ...data, id })])
+      .insert([mapBillToDb(data)])
       .select()
       .single();
 

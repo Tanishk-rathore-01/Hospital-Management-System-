@@ -1,6 +1,6 @@
 import { Patient } from '../types';
 import { supabase } from '../lib/supabase';
-import { getNextPrefixedId, throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
+import { throwIfSupabaseError, toNumber } from './supabaseServiceHelpers';
 
 // Helper function to map database snake_case to TypeScript camelCase
 const mapDbToPatient = (dbPatient: any): Patient => ({
@@ -63,10 +63,8 @@ export const patientService = {
   },
 
   async create(data: Omit<Patient, 'id' | 'registrationDate'>): Promise<Patient> {
-    const id = await getNextPrefixedId('patients', 'P');
     const dbData = mapPatientToDb({
       ...data,
-      id,
       registrationDate: new Date().toISOString().slice(0, 10),
       status: data.status || 'Active',
     });
