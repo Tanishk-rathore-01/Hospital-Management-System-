@@ -15,20 +15,20 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'dashboard' as NavItem, label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-400', path: '/dashboard' },
-  { id: 'patients' as NavItem, label: 'Patients', icon: Users, color: 'text-emerald-400', path: '/patients' },
-  { id: 'appointments' as NavItem, label: 'Appointments', icon: Calendar, color: 'text-sky-400', path: '/appointments' },
-  { id: 'medical-records' as NavItem, label: 'Medical Records', icon: FileText, color: 'text-cyan-400', path: '/medical-records' },
-  { id: 'billing' as NavItem, label: 'Billing', icon: Receipt, color: 'text-amber-400', path: '/billing' },
-  { id: 'pharmacy' as NavItem, label: 'Pharmacy', icon: Pill, color: 'text-rose-400', path: '/pharmacy' },
-  { id: 'reports' as NavItem, label: 'Reports', icon: BarChart3, color: 'text-blue-400', path: '/reports' },
+  { id: 'dashboard' as NavItem, label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-400', path: '/dashboard', roles: ['owner', 'admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'billing_staff'] },
+  { id: 'patients' as NavItem, label: 'Patients', icon: Users, color: 'text-emerald-400', path: '/patients', roles: ['owner', 'admin', 'doctor', 'nurse', 'receptionist'] },
+  { id: 'appointments' as NavItem, label: 'Appointments', icon: Calendar, color: 'text-sky-400', path: '/appointments', roles: ['owner', 'admin', 'doctor', 'nurse', 'receptionist'] },
+  { id: 'medical-records' as NavItem, label: 'Medical Records', icon: FileText, color: 'text-cyan-400', path: '/medical-records', roles: ['owner', 'admin', 'doctor', 'nurse'] },
+  { id: 'billing' as NavItem, label: 'Billing', icon: Receipt, color: 'text-amber-400', path: '/billing', roles: ['owner', 'admin', 'receptionist', 'billing_staff'] },
+  { id: 'pharmacy' as NavItem, label: 'Pharmacy', icon: Pill, color: 'text-rose-400', path: '/pharmacy', roles: ['owner', 'admin', 'pharmacist'] },
+  { id: 'reports' as NavItem, label: 'Reports', icon: BarChart3, color: 'text-blue-400', path: '/reports', roles: ['owner', 'admin'] },
 ];
 
 type SidebarPanel = 'notifications' | 'settings' | 'logout' | null;
 
 export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const navigate = useNavigate();
-  const { displayName, email, signOut } = useAuth();
+  const { displayName, email, signOut, role } = useAuth();
   const [activePanel, setActivePanel] = useState<SidebarPanel>(null);
   const [authError, setAuthError] = useState('');
   const [notificationsRead, setNotificationsRead] = useState(false);
@@ -37,6 +37,8 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     compactNavigation: true,
     careAlerts: true,
   });
+
+  const filteredNavItems = navItems.filter((item) => !role || item.roles.includes(role));
 
   const handleLogout = async () => {
     setAuthError('');
@@ -82,7 +84,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
               Core Modules
             </p>
           )}
-          {navItems.map(({ id, label, icon: Icon, color, path }) => (
+          {filteredNavItems.map(({ id, label, icon: Icon, color, path }) => (
             <NavLink
               key={id}
               to={path}
@@ -161,7 +163,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       </aside>
 
       <nav className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 gap-1 rounded-lg border border-slate-700/60 bg-[#071214]/95 p-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
-        {navItems.slice(0, 5).map(({ label, icon: Icon, path }) => (
+        {filteredNavItems.slice(0, 5).map(({ label, icon: Icon, path }) => (
           <NavLink
             key={label}
             to={path}

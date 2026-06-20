@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Search, Plus, Filter, AlertTriangle, Package, ShoppingCart, Eye, X, Edit2, AlertCircle } from 'lucide-react';
+import { Search, Plus, Filter, AlertTriangle, Package, ShoppingCart, Eye, X, Edit2, AlertCircle, Lock } from 'lucide-react';
 import { formatINR2 } from '../utils/money';
 import { Medicine, PharmacyOrder } from '../types';
 import { doctors, todayIso } from '../data/mockData';
 import { useMedicines, useMedicineLowStockAlerts, useCreateMedicine } from '../src/hooks/useMedicines';
 import { usePharmacyOrders, useCreatePharmacyOrder, useDispensePharmacyOrder } from '../src/hooks/usePharmacy';
 import { usePatients } from '../src/hooks/usePatients';
+import { useAuth } from '../src/auth/AuthContext';
+import { canUpdateMedicines, canDeleteMedicines, canUpdatePharmacyOrders, canDeletePharmacyOrders } from '../src/services/supabaseServiceHelpers';
 
 const statusColors: Record<string, string> = {
   'In Stock': 'bg-emerald-100 text-emerald-700',
@@ -47,7 +49,13 @@ export default function Pharmacy() {
   const { data: orders = [], isLoading: ordersLoading, error: ordersError } = usePharmacyOrders();
   const { data: patients = [] } = usePatients();
   const { data: stockAlerts = [], isLoading: alertsLoading } = useMedicineLowStockAlerts();
+  const { role } = useAuth();
   const createMedicineMutation = useCreateMedicine();
+
+  const canUpdateMeds = canUpdateMedicines(role);
+  const canDeleteMeds = canDeleteMedicines(role);
+  const canUpdateOrders = canUpdatePharmacyOrders(role);
+  const canDeleteOrders = canDeletePharmacyOrders(role);
   const createOrderMutation = useCreatePharmacyOrder();
   const dispenseMutation = useDispensePharmacyOrder();
   
@@ -269,9 +277,15 @@ export default function Pharmacy() {
           <button
             type="button"
             onClick={openCreateModal}
-            className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:from-rose-600 hover:to-pink-600 transition-all shadow-lg shadow-rose-500/25 whitespace-nowrap"
+            disabled={activeTab === 'inventory' ? !canUpdateMeds : !canUpdateOrders}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg whitespace-nowrap ${
+              (activeTab === 'inventory' ? canUpdateMeds : canUpdateOrders)
+                ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white hover:from-rose-600 hover:to-pink-600 shadow-rose-500/25'
+                : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-slate-300/25'
+            }`}
+            title={activeTab === 'inventory' && !canUpdateMeds ? 'You do not have permission to add medicines' : activeTab === 'orders' && !canUpdateOrders ? 'You do not have permission to create orders' : ''}
           >
-            <Plus className="w-4 h-4" /> {activeTab === 'inventory' ? 'Add Medicine' : 'New Order'}
+            {(activeTab === 'inventory' ? canUpdateMeds : canUpdateOrders) ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />} {activeTab === 'inventory' ? (canUpdateMeds ? 'Add Medicine' : 'Add Disabled') : (canUpdateOrders ? 'New Order' : 'Create Disabled')}
           </button>
         </div>
       </div>
@@ -333,7 +347,13 @@ export default function Pharmacy() {
                     <td className="px-4 py-4">
                       <div className="flex gap-1">
                         <button onClick={() => setViewMed(med)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors"><Eye className="w-4 h-4" /></button>
-                        <button className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-500 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                        <button 
+                          disabled={!canUpdateMeds}
+                          className={`p-1.5 rounded-lg transition-colors ${canUpdateMeds ? 'hover:bg-amber-50 text-amber-500' : 'text-slate-300 cursor-not-allowed'}`}
+                          title={!canUpdateMeds ? 'You do not have permission to edit medicines' : ''}
+                        >
+                          {canUpdateMeds ? <Edit2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -388,10 +408,17 @@ export default function Pharmacy() {
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      {order.status === 'Pending' && (
+                      {order.status === 'Pending' && canUpdateOrders && (
                         <button onClick={() => dispenseOrder(order.id)} disabled={dispenseMutation.isPending}
                           className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-semibold rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                           {dispenseMutation.isPending ? 'Dispensing...' : 'Dispense'}
+                        </button>
+                      )}
+                      {order.status === 'Pending' && !canUpdateOrders && (
+                        <button disabled
+                          className="px-3 py-1.5 bg-slate-100 text-slate-400 text-xs font-semibold rounded-lg cursor-not-allowed"
+                          title="You do not have permission to dispense orders">
+                          <Lock className="w-3 h-3 inline mr-1" /> Locked
                         </button>
                       )}
                     </td>

@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Search, Eye, Plus, FileText, X, Activity, Thermometer, Heart, Droplets, AlertCircle } from 'lucide-react';
+import { Search, Eye, Plus, FileText, X, Activity, Thermometer, Heart, Droplets, AlertCircle, Lock } from 'lucide-react';
 import { MedicalRecord } from '../types';
 import { doctors, todayIso } from '../data/mockData';
 import { useMedicalRecords, useCreateMedicalRecord } from '../src/hooks/useMedicalRecords';
 import { usePatients } from '../src/hooks/usePatients';
+import { useAuth } from '../src/auth/AuthContext';
+import { canCreateMedicalRecords, canUpdateMedicalRecords, canDeleteMedicalRecords } from '../src/services/supabaseServiceHelpers';
 
 const emptyRecordForm = {
   patientId: '',
@@ -25,7 +27,12 @@ const emptyRecordForm = {
 export default function MedicalRecords() {
   const { data: records = [], isLoading, error } = useMedicalRecords();
   const { data: patients = [] } = usePatients();
+  const { role } = useAuth();
   const createRecordMutation = useCreateMedicalRecord();
+
+  const canCreate = canCreateMedicalRecords(role);
+  const canUpdate = canUpdateMedicalRecords(role);
+  const canDelete = canDeleteMedicalRecords(role);
   const [search, setSearch] = useState('');
   const [viewRecord, setViewRecord] = useState<MedicalRecord | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'prescriptions' | 'labs' | 'vitals'>('overview');
@@ -138,9 +145,15 @@ export default function MedicalRecords() {
         <button
           type="button"
           onClick={openCreateModal}
-          className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-teal-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:from-cyan-700 hover:to-teal-600 transition-all shadow-lg shadow-cyan-500/25"
+          disabled={!canCreate}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg ${
+            canCreate
+              ? 'bg-gradient-to-r from-cyan-600 to-teal-500 text-white hover:from-cyan-700 hover:to-teal-600 shadow-cyan-500/25'
+              : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-slate-300/25'
+          }`}
+          title={!canCreate ? 'You do not have permission to create medical records' : ''}
         >
-          <Plus className="w-4 h-4" /> New Record
+          {canCreate ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />} {canCreate ? 'New Record' : 'Create Disabled'}
         </button>
       </div>
 

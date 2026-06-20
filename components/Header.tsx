@@ -19,6 +19,7 @@ import { useMedicalRecords } from '../src/hooks/useMedicalRecords';
 import { useMedicines } from '../src/hooks/useMedicines';
 import { usePatients } from '../src/hooks/usePatients';
 import { useAuth } from '../src/auth/AuthContext';
+import { Shield } from 'lucide-react';
 
 const pageTitles: Record<NavItem, { title: string; subtitle: string }> = {
   landing: { title: 'Apex Health Care', subtitle: 'One calm workspace for Indian hospital teams' },
@@ -59,7 +60,7 @@ function getNavFromPath(pathname: string): NavItem {
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { displayName, email, signOut } = useAuth();
+  const { displayName, email, signOut, role } = useAuth();
   const { data: patients = [] } = usePatients();
   const { data: appointments = [] } = useAppointments();
   const { data: bills = [] } = useBills();
@@ -333,6 +334,14 @@ export default function Header() {
                 <div className="border-b border-slate-700/60 px-3 py-3">
                   <p className="text-sm font-bold text-slate-100">{displayName}</p>
                   <p className="text-xs text-slate-500">{email}</p>
+                  {role && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <Shield className="h-3.5 w-3.5 text-teal-300" />
+                      <span className="rounded-md border border-teal-400/30 bg-teal-400/10 px-2 py-0.5 text-xs font-semibold capitalize text-teal-200">
+                        {role}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"

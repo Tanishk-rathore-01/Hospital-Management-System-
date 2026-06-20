@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Plus, Search, Calendar, Clock, X, Check, Filter, Eye, AlertCircle, Trash2, ArrowRight } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, X, Check, Filter, Eye, AlertCircle, Trash2, ArrowRight, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { doctors } from '../data/mockData';
 import { formatINR2 } from '../utils/money';
@@ -7,6 +7,8 @@ import { Appointment } from '../types';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { useAppointments, useCreateAppointment, useUpdateAppointmentStatus, useDeleteAppointment } from '../src/hooks/useAppointments';
 import { usePatients } from '../src/hooks/usePatients';
+import { useAuth } from '../src/auth/AuthContext';
+import { canUpdateAppointments, canDeleteAppointments } from '../src/services/supabaseServiceHelpers';
 
 const statusColors: Record<string, string> = {
   'Scheduled': 'bg-blue-100 text-blue-700',
@@ -33,9 +35,13 @@ const emptyForm = {
 export default function Appointments() {
   const { data: appointments = [], isLoading, error } = useAppointments();
   const { data: patients = [] } = usePatients();
+  const { role } = useAuth();
   const createMutation = useCreateAppointment();
   const updateStatusMutation = useUpdateAppointmentStatus();
   const deleteMutation = useDeleteAppointment();
+
+  const canUpdate = canUpdateAppointments(role);
+  const canDelete = canDeleteAppointments(role);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -267,7 +273,7 @@ export default function Appointments() {
                       <button onClick={() => setViewAppt(appt)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors" title="View">
                         <Eye className="w-4 h-4" />
                       </button>
-                      {appt.status === 'Scheduled' && (
+                      {appt.status === 'Scheduled' && canUpdate && (
                         <>
                           <button onClick={() => updateStatusMutation.mutate({ id: appt.id, status: 'In Progress' })} className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-500 transition-colors" title="Start">
                             <Clock className="w-4 h-4" />
@@ -277,13 +283,18 @@ export default function Appointments() {
                           </button>
                         </>
                       )}
-                      {appt.status === 'In Progress' && (
+                      {appt.status === 'In Progress' && canUpdate && (
                         <button onClick={() => updateStatusMutation.mutate({ id: appt.id, status: 'Completed' })} className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-500 transition-colors" title="Complete">
                           <Check className="w-4 h-4" />
                         </button>
                       )}
-                      <button onClick={() => handleDeleteAppointment(appt)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors" title="Delete">
-                        <Trash2 className="w-4 h-4" />
+                      <button 
+                        onClick={() => handleDeleteAppointment(appt)} 
+                        disabled={!canDelete}
+                        className={`p-1.5 rounded-lg transition-colors ${canDelete ? 'hover:bg-red-50 text-red-400' : 'text-slate-300 cursor-not-allowed'}`}
+                        title={!canDelete ? 'You do not have permission to delete appointments' : 'Delete'}
+                      >
+                        {canDelete ? <Trash2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                       </button>
                     </div>
                   </td>

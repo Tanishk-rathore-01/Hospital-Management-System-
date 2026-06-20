@@ -51,3 +51,60 @@ export function hasSufficientHierarchy(userLevel: number | null, requiredLevel: 
   if (userLevel === null) return false;
   return userLevel <= requiredLevel;
 }
+
+// Permission helper functions for UI-level access control
+export function canDeletePatients(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+export function canUpdatePatients(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin' || role === 'doctor';
+}
+
+export function canDeleteAppointments(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+export function canUpdateAppointments(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin' || role === 'doctor';
+}
+
+export function canCreateMedicalRecords(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin' || role === 'doctor';
+}
+
+export function canUpdateMedicalRecords(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin' || role === 'doctor' || role === 'nurse';
+}
+
+export function canDeleteMedicalRecords(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+export function canDeleteBills(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+export function canUpdateBills(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin' || role === 'billing_staff';
+}
+
+export function canDeleteMedicines(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+export function canUpdateMedicines(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin' || role === 'pharmacist';
+}
+
+export function canDeletePharmacyOrders(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+export function canUpdatePharmacyOrders(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin' || role === 'pharmacist';
+}
+
+export function canViewReports(role: UserRole | null): boolean {
+  return role === 'owner' || role === 'admin';
+}

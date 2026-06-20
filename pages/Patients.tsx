@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Search, Plus, Filter, Edit2, Eye, Trash2, Phone, AlertTriangle, X, AlertCircle } from 'lucide-react';
+import { Search, Plus, Filter, Edit2, Eye, Trash2, Phone, AlertTriangle, X, AlertCircle, Lock } from 'lucide-react';
 import { z } from 'zod';
 import { Patient } from '../types';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { usePatients, useCreatePatient, useUpdatePatient, useDeletePatient } from '../src/hooks/usePatients';
+import { useAuth } from '../src/auth/AuthContext';
+import { canUpdatePatients, canDeletePatients } from '../src/services/supabaseServiceHelpers';
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
 const genders = ['Male', 'Female', 'Other'] as const;
@@ -76,9 +78,13 @@ const toPatientFormValues = (patient: Patient): PatientFormValues => ({
 
 export default function Patients() {
   const { data: patients = [], isLoading, error } = usePatients();
+  const { role } = useAuth();
   const createMutation = useCreatePatient();
   const updateMutation = useUpdatePatient();
   const deleteMutation = useDeletePatient();
+
+  const canUpdate = canUpdatePatients(role);
+  const canDelete = canDeletePatients(role);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -306,8 +312,22 @@ export default function Patients() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
                       <button onClick={() => setViewPatient(p)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors"><Eye className="w-4 h-4" /></button>
-                      <button onClick={() => handleEdit(p)} className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-500 transition-colors"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(p)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <button 
+                        onClick={() => handleEdit(p)} 
+                        disabled={!canUpdate}
+                        className={`p-1.5 rounded-lg transition-colors ${canUpdate ? 'hover:bg-amber-50 text-amber-500' : 'text-slate-300 cursor-not-allowed'}`}
+                        title={!canUpdate ? 'You do not have permission to edit patients' : ''}
+                      >
+                        {canUpdate ? <Edit2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(p)} 
+                        disabled={!canDelete}
+                        className={`p-1.5 rounded-lg transition-colors ${canDelete ? 'hover:bg-red-50 text-red-500' : 'text-slate-300 cursor-not-allowed'}`}
+                        title={!canDelete ? 'You do not have permission to delete patients' : ''}
+                      >
+                        {canDelete ? <Trash2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                      </button>
                     </div>
                   </td>
                 </tr>

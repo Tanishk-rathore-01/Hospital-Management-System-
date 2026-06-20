@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Search, Eye, Plus, Download, X, IndianRupee, CreditCard, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Search, Eye, Plus, Download, X, IndianRupee, CreditCard, CheckCircle, AlertCircle, Clock, Lock } from 'lucide-react';
 import { formatINR2, formatINR } from '../utils/money';
 import { Bill } from '../types';
 import { todayIso } from '../data/mockData';
 import { useBills, useCreateBill, useMarkBillPaid } from '../src/hooks/useBills';
 import { usePatients } from '../src/hooks/usePatients';
+import { useAuth } from '../src/auth/AuthContext';
+import { canUpdateBills, canDeleteBills } from '../src/services/supabaseServiceHelpers';
 
 const addDaysIso = (date: string, days: number) => {
   const nextDate = new Date(`${date}T00:00:00`);
@@ -43,8 +45,12 @@ const statusColors: Record<string, string> = {
 export default function Billing() {
   const { data: bills = [], isLoading, error } = useBills();
   const { data: patients = [] } = usePatients();
+  const { role } = useAuth();
   const createBillMutation = useCreateBill();
   const markPaidMutation = useMarkBillPaid();
+
+  const canUpdate = canUpdateBills(role);
+  const canDelete = canDeleteBills(role);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [viewBill, setViewBill] = useState<Bill | null>(null);
@@ -201,9 +207,15 @@ export default function Billing() {
         <button
           type="button"
           onClick={openInvoiceModal}
-          className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-500/25"
+          disabled={!canUpdate}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg ${
+            canUpdate
+              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-amber-500/25'
+              : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-slate-300/25'
+          }`}
+          title={!canUpdate ? 'You do not have permission to create invoices' : ''}
         >
-          <Plus className="w-4 h-4" /> New Invoice
+          {canUpdate ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />} {canUpdate ? 'New Invoice' : 'Create Disabled'}
         </button>
       </div>
 
@@ -266,9 +278,14 @@ export default function Billing() {
                         <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors" title="Download">
                           <Download className="w-4 h-4" />
                         </button>
-                        {bill.status !== 'Paid' && (
+                        {bill.status !== 'Paid' && canUpdate && (
                           <button onClick={() => markPaid(bill.id)} disabled={markPaidMutation.isPending} className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
                             {markPaidMutation.isPending ? 'Marking...' : 'Mark Paid'}
+                          </button>
+                        )}
+                        {bill.status !== 'Paid' && !canUpdate && (
+                          <button disabled className="px-2 py-1 rounded-lg bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed whitespace-nowrap" title="You do not have permission to mark bills as paid">
+                            <Lock className="w-3 h-3 inline mr-1" /> Locked
                           </button>
                         )}
                       </div>
